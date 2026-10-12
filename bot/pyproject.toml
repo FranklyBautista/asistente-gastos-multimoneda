@@ -1,0 +1,67 @@
+[project]
+name = "gastos"
+version = "0.1.0"
+description = "Bot de Telegram para registrar gastos multimoneda (VES, COP, USD, USDT) en lenguaje natural."
+authors = [
+    { name = "Frankly Bautista", email = "franklybautista0511@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "aiogram>=3.31.0",
+    "apscheduler>=3.10,<4",
+    "fastapi>=0.143.0",
+    "google-genai>=2.29.0",
+    "groq>=1.7.0",
+    "httpx>=0.28.1",
+    "psycopg[binary,pool]>=3.3.6",
+    "pydantic>=2.13.5",
+    "pydantic-settings>=2.15.0",
+    "structlog>=26.1.0",
+    "uvicorn>=0.54.0",
+]
+
+[project.scripts]
+gastos = "gastos.main:run"
+
+[build-system]
+requires = ["uv_build>=0.12.24,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "import-linter>=2.15",
+    "pyright>=1.1.414",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.17.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC"]
+
+[tool.pyright]
+include = ["src", "tests"]
+typeCheckingMode = "standard"
+strict = ["src/gastos/domain"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.importlinter]
+root_package = "gastos"
+
+[[tool.importlinter.contracts]]
+name = "Capas del bot"
+type = "layers"
+layers = [
+  "gastos.chat | gastos.jobs",
+  "gastos.services",
+  "gastos.extraction | gastos.rates | gastos.db",
+  "gastos.llm",
+  "gastos.domain",
+]

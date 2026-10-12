@@ -1,0 +1,20 @@
+name: db
+
+on:
+  push:
+    branches: [main]
+    paths: ["supabase/**", ".github/workflows/db.yml"]
+  pull_request:
+    paths: ["supabase/**", ".github/workflows/db.yml"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase start -x studio,imgproxy,vector,logflare,edge-runtime,realtime,storage-api
+      - run: supabase db reset
+      - run: supabase test db

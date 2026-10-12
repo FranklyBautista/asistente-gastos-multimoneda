@@ -1,0 +1,1 @@
+"""Logging estructurado con structlog."""
