@@ -45,7 +45,7 @@ Un solo repositorio con dos proyectos (bot en Python, web en TypeScript). `supab
 gastos-multimoneda/
 ├── README.md
 ├── LICENSE
-├── Makefile
+├── tasks.ps1                    # tareas comunes (ver ADR 0003)
 ├── .gitignore
 ├── .pre-commit-config.yaml
 ├── .github/
@@ -303,7 +303,7 @@ layers = [
 
 ## 9. Paso a paso: crear el repositorio y el proyecto
 
-Los comandos asumen Git, Docker, uv y la Supabase CLI instalados. Si trabajas en Windows, usa WSL2 o corre los comandos de cada carpeta a mano en lugar del `Makefile`.
+Los comandos asumen Git, Docker Desktop, uv y la Supabase CLI instalados, y PowerShell en Windows.
 
 ### 9.1 Repositorio
 
@@ -337,35 +337,24 @@ supabase start                      # requiere Docker
 supabase migration new init_schema  # aquí va el esquema de la Fase 1
 ```
 
-### 9.4 Comandos comunes (`Makefile` en la raíz)
+### 9.4 Comandos comunes (`tasks.ps1` en la raíz)
 
-```make
-.PHONY: setup check test db-up db-reset
+El desarrollo es nativo en Windows, así que el `Makefile` se sustituyó por un script de PowerShell (ver ADR 0003). Cada tarea corta en el primer paso que falla.
 
-setup:
-	cd bot && uv sync
-
-db-up:
-	supabase start
-
-db-reset:
-	supabase db reset
-
-test:
-	cd bot && uv run pytest tests/unit -q
-
-check:
-	cd bot && uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run lint-imports && uv run pytest tests/unit -q
-	supabase test db
-```
-
-(Las líneas de cada regla del `Makefile` van con tabulador, no con espacios.)
+| Tarea | Qué hace |
+|---|---|
+| `.\tasks.ps1 setup` | `uv sync` en `bot/` |
+| `.\tasks.ps1 hooks` | Instala pre-commit (ruff y gitleaks) |
+| `.\tasks.ps1 db-up` / `db-down` | `supabase start` / `supabase stop` |
+| `.\tasks.ps1 db-reset` | `supabase db reset` |
+| `.\tasks.ps1 test` | Pruebas unitarias del bot |
+| `.\tasks.ps1 check` | ruff, formato, pyright, lint-imports, pytest y `supabase test db` |
 
 ### 9.5 Pre-commit, CI y primer PR
 
 1. Añade `.pre-commit-config.yaml` con ruff (lint y formato) y gitleaks, e instálalo con `pre-commit install`.
 2. Crea `bot.yml` y `db.yml` en `.github/workflows/` según la sección 7.
-3. Escribe `README.md` con una descripción de tres líneas, el diagrama de la sección 3 y los comandos `make setup` y `make check`.
+3. Escribe `README.md` con una descripción de tres líneas, el diagrama de la sección 3 y los comandos `.\tasks.ps1 setup` y `.\tasks.ps1 check`.
 4. Escribe `docs/decisions/0001-stack.md` y `0002-monedas.md` y copia este documento a `docs/`.
 5. Abre el primer PR (`fase-0/fundamentos`), espera el CI en verde y haz merge.
 
@@ -373,7 +362,7 @@ check:
 
 ## 10. Criterio de salida de la Fase 0
 
-- [ ] Clonar el repositorio y correr `make setup` y `make check` funciona de cero.
+- [ ] Clonar el repositorio y correr `.\tasks.ps1 setup` y `.\tasks.ps1 check` funciona de cero.
 - [ ] El CI está en verde en `main` con el esqueleto vacío.
 - [ ] `supabase start` levanta una base local y `supabase test db` corre (aunque aún no haya pruebas).
 - [ ] `lint-imports` falla si `domain` intenta importar `db`, `llm` o `chat` (compruébalo a propósito una vez).
