@@ -1,4 +1,4 @@
--- Prueba de humo: confirma que pgTAP corre. Las pruebas del esquema llegan en la Fase 1.
+-- Prueba de humo: confirma que pgTAP corre.
 begin;
 create extension if not exists pgtap with schema extensions;
 select plan(1);
