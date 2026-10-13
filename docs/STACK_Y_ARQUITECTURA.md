@@ -42,7 +42,7 @@ Todo lo de aquí es una propuesta. Si cambias una decisión, déjala registrada 
 Un solo repositorio con dos proyectos (bot en Python, web en TypeScript). `supabase/` es la fuente de verdad del esquema: el bot y la web dependen de él, no al revés.
 
 ```
-gastos-multimoneda/
+asistente-gastos-multimoneda/
 ├── README.md
 ├── LICENSE
 ├── tasks.ps1                    # tareas comunes (ver ADR 0003)
@@ -307,7 +307,7 @@ Los comandos asumen Git, Docker Desktop, uv y la Supabase CLI instalados, y Powe
 
 ### 9.1 Repositorio
 
-1. Crea en GitHub un repositorio **público** llamado `gastos-multimoneda`, con licencia MIT y `.gitignore` de Python. Clónalo.
+1. Crea en GitHub un repositorio **público** llamado `asistente-gastos-multimoneda`, con licencia MIT y `.gitignore` de Python. Clónalo.
 2. Añade a `.gitignore` las entradas de Node (`node_modules/`, `.next/`) y `.env`.
 3. Crea las carpetas:
 
