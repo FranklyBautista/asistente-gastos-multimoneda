@@ -1,4 +1,4 @@
-# Gastos multimoneda
+# Asistente de gastos multimoneda
 
 Bot de Telegram que registra gastos e ingresos escritos en lenguaje natural ("gasté 15 en el almuerzo") en su moneda original: bolívares, pesos colombianos, dólares o USDT.
 Guarda cada movimiento con la tasa del momento, responde preguntas sobre tus finanzas y envía un resumen semanal.
@@ -25,15 +25,17 @@ Cada capa solo importa de las que están por debajo; `import-linter` lo verifica
 
 ## Desarrollo
 
-Requisitos: Git, Docker, [uv](https://docs.astral.sh/uv/), [Supabase CLI](https://supabase.com/docs/guides/cli) y `make`. En Windows, usa WSL2.
+Requisitos: Git, Docker Desktop, [uv](https://docs.astral.sh/uv/) y [Supabase CLI](https://supabase.com/docs/guides/cli). Las tareas comunes están en `tasks.ps1` (PowerShell, Windows).
 
-```bash
-cp bot/.env.example bot/.env   # rellena los valores
-make setup                     # instala dependencias del bot
-make hooks                     # instala pre-commit (ruff + gitleaks)
-make db-up                     # levanta Supabase local (requiere Docker)
-make check                     # lint, tipos, capas, pruebas y pgTAP
+```powershell
+Copy-Item bot\.env.example bot\.env   # rellena los valores
+.\tasks.ps1 setup                     # instala dependencias del bot
+.\tasks.ps1 hooks                     # instala pre-commit (ruff + gitleaks)
+.\tasks.ps1 db-up                     # levanta Supabase local (requiere Docker)
+.\tasks.ps1 check                     # lint, tipos, capas, pruebas y pgTAP
 ```
+
+Supabase local usa los puertos 553xx (base de datos en `127.0.0.1:55322`) para convivir con otros proyectos que usen los puertos por defecto.
 
 ## Estructura
 
