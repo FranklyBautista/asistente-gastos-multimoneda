@@ -4,7 +4,7 @@ Bot de Telegram que registra gastos e ingresos escritos en lenguaje natural ("ga
 Guarda cada movimiento con la tasa del momento, responde preguntas sobre tus finanzas y envía un resumen semanal.
 Una app web (en desarrollo) muestra todo centralizado.
 
-> Estado: **Fase 0**, esqueleto del proyecto y CI. Ver [`docs/STACK_Y_ARQUITECTURA.md`](docs/STACK_Y_ARQUITECTURA.md).
+> Estado: **Fase 2**, el bot responde, aplica la lista blanca y hace el onboarding con `/start`. Ver [`docs/STACK_Y_ARQUITECTURA.md`](docs/STACK_Y_ARQUITECTURA.md).
 
 ## Arquitectura
 
@@ -33,6 +33,7 @@ Copy-Item bot\.env.example bot\.env   # rellena los valores
 .\tasks.ps1 hooks                     # instala pre-commit (ruff + gitleaks)
 .\tasks.ps1 db-up                     # levanta Supabase local (requiere Docker)
 .\tasks.ps1 check                     # lint, tipos, capas, pruebas y pgTAP
+.\tasks.ps1 run                       # arranca el bot en modo polling
 ```
 
 Supabase local usa los puertos 553xx (base de datos en `127.0.0.1:55322`) para convivir con otros proyectos que usen los puertos por defecto.
