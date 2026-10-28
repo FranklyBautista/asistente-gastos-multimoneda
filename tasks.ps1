@@ -7,7 +7,7 @@
 #>
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('help', 'setup', 'hooks', 'check', 'test', 'db-up', 'db-down', 'db-reset', 'db-test')]
+    [ValidateSet('help', 'setup', 'hooks', 'run', 'check', 'test', 'test-int', 'db-up', 'db-down', 'db-reset', 'db-test')]
     [string]$Task = 'help'
 )
 
@@ -35,7 +35,8 @@ function Invoke-BotChecks {
     Invoke-Step $Bot 'uv' @('run', 'ruff', 'check', '.')
     Invoke-Step $Bot 'uv' @('run', 'ruff', 'format', '--check', '.')
     Invoke-Step $Bot 'uv' @('run', 'pyright')
-    Invoke-Step $Bot 'uv' @('run', 'lint-imports')
+    # Se llama por Python: Windows Application Control bloquea el .exe de lint-imports.
+    Invoke-Step $Bot 'uv' @('run', 'python', '-c', 'import sys; from importlinter.cli import lint_imports; sys.exit(lint_imports())')
     Invoke-Step $Bot 'uv' @('run', 'pytest', 'tests/unit', '-q')
 }
 
@@ -47,21 +48,26 @@ switch ($Task) {
         }
         Invoke-Step $Root 'pre-commit' @('install')
     }
+    'run'      { Invoke-Step $Bot 'uv' @('run', 'python', '-m', 'gastos.main') }
     'test'     { Invoke-Step $Bot 'uv' @('run', 'pytest', 'tests/unit', '-q') }
+    'test-int' { Invoke-Step $Bot 'uv' @('run', 'pytest', 'tests/integration', '-q') }
     'db-up'    { Invoke-Step $Root 'supabase' @('start') }
     'db-down'  { Invoke-Step $Root 'supabase' @('stop') }
     'db-reset' { Invoke-Step $Root 'supabase' @('db', 'reset') }
     'db-test'  { Invoke-Step $Root 'supabase' @('test', 'db') }
     'check'    {
         Invoke-BotChecks
+        Invoke-Step $Bot 'uv' @('run', 'pytest', 'tests/integration', '-q')
         Invoke-Step $Root 'supabase' @('test', 'db')
     }
     'help'     {
         Write-Host 'Uso: .\tasks.ps1 <tarea>'
         Write-Host '  setup     instala las dependencias del bot (uv sync)'
+        Write-Host '  run       arranca el bot en modo polling (requiere bot\.env y db-up)'
         Write-Host '  hooks     instala pre-commit (ruff + gitleaks)'
-        Write-Host '  check     lint, formato, tipos, capas, pruebas y pgTAP'
+        Write-Host '  check     lint, formato, tipos, capas, pruebas (unit + integracion) y pgTAP'
         Write-Host '  test      solo las pruebas unitarias del bot'
+        Write-Host '  test-int  pruebas de integracion contra Supabase local'
         Write-Host '  db-up     levanta Supabase local (requiere Docker Desktop)'
         Write-Host '  db-down   detiene Supabase local'
         Write-Host '  db-reset  reaplica migraciones y seed'
