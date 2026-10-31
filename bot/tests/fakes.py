@@ -3,11 +3,18 @@
 from collections.abc import Sequence
 from dataclasses import replace
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID, uuid4
 
+from pydantic import BaseModel
+
+from gastos.domain.account import Account, Category
 from gastos.domain.conversion import Rate
 from gastos.domain.currency import Currency, QuotedCurrency, RateSource, VesRateSource
+from gastos.domain.transaction import NewTransaction, SavedTransaction
 from gastos.domain.user import User
+from gastos.extraction.parser import Categories
+from gastos.extraction.schema import Extraction
 
 
 def make_user(telegram_id: int = 111, *, onboarded: bool = False) -> User:
@@ -103,3 +110,97 @@ def _or_raise[T](result: T | Exception) -> T:
     if isinstance(result, Exception):
         raise result
     return result
+
+
+# ---- Registro de movimientos (Fase 4) ----
+
+
+def make_accounts() -> list[Account]:
+    """Las 4 cuentas que crea el trigger, más una de banco en Bs."""
+    return [
+        Account(uuid4(), "banesco", "VES", "bank"),
+        Account(uuid4(), "efectivo Bs", "VES", "cash"),
+        Account(uuid4(), "efectivo COP", "COP", "cash"),
+        Account(uuid4(), "efectivo USD", "USD", "cash"),
+        Account(uuid4(), "wallet USDT", "USDT", "wallet"),
+    ]
+
+
+def make_categories() -> list[Category]:
+    expense = ["comida", "otros", "ocio", "salud", "servicios", "transporte"]
+    income = ["otros ingresos", "salario"]
+    return [Category(uuid4(), n, "expense") for n in expense] + [
+        Category(uuid4(), n, "income") for n in income
+    ]
+
+
+class FakeTransactionStore:
+    """Implementa services.transactions.TransactionStore en memoria."""
+
+    def __init__(self) -> None:
+        self.account_list = make_accounts()
+        self.category_list = make_categories()
+        self.batches: list[list[NewTransaction]] = []
+        self.saved: dict[UUID, tuple[int, bool]] = {}  # id → (lote, borrado)
+
+    async def accounts(self, user_id: UUID) -> list[Account]:
+        return self.account_list
+
+    async def categories(self, user_id: UUID) -> list[Category]:
+        return self.category_list
+
+    async def insert_many(
+        self, user_id: UUID, items: Sequence[NewTransaction]
+    ) -> list[SavedTransaction]:
+        self.batches.append(list(items))
+        saved: list[SavedTransaction] = []
+        for item in items:
+            tx_id = uuid4()
+            self.saved[tx_id] = (len(self.batches) - 1, False)
+            saved.append(
+                SavedTransaction(
+                    id=tx_id,
+                    kind=item.kind,
+                    amount=item.amount,
+                    currency=item.currency,
+                    category=item.category.name,
+                    description=item.description,
+                    account_name=item.account.name,
+                    snapshot=item.snapshot,
+                    occurred_at=item.occurred_at or datetime.now(UTC),
+                )
+            )
+        return saved
+
+    async def undo_batch(self, user_id: UUID, transaction_id: UUID) -> int:
+        if transaction_id not in self.saved:
+            return 0
+        batch, _ = self.saved[transaction_id]
+        ids = [k for k, (b, deleted) in self.saved.items() if b == batch and not deleted]
+        for k in ids:
+            self.saved[k] = (batch, True)
+        return len(ids)
+
+
+class FakeExtractor:
+    """Implementa services.transactions.TextExtractor con una respuesta fija."""
+
+    def __init__(self, result: Extraction) -> None:
+        self.result = result
+        self.calls: list[tuple[str, Categories, datetime]] = []
+
+    async def extract(self, text: str, categories: Categories, now_local: datetime) -> Extraction:
+        self.calls.append((text, categories, now_local))
+        return self.result
+
+
+class FakeLLM:
+    """Implementa llm.LLMClient: devuelve las respuestas en orden (dict → se valida)."""
+
+    def __init__(self, *responses: dict[str, Any] | Exception) -> None:
+        self._responses = list(responses)
+        self.calls: list[tuple[str, str]] = []
+
+    async def structured[T: BaseModel](self, *, system: str, prompt: str, schema: type[T]) -> T:
+        self.calls.append((system, prompt))
+        return schema.model_validate(_or_raise(self._responses.pop(0)))

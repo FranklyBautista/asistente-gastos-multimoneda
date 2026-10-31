@@ -21,3 +21,15 @@ class RateUnavailable(DomainError):
         super().__init__(f"no hay tasa para {currency} ({source})")
         self.currency = currency
         self.source = source
+
+
+class LLMUnavailable(DomainError):
+    """El proveedor de IA no respondió o no devolvió una salida válida tras reintentar."""
+
+
+class AccountNotFound(DomainError):
+    """El usuario no tiene ninguna cuenta activa en esa moneda."""
+
+    def __init__(self, currency: str) -> None:
+        super().__init__(f"no hay cuenta activa en {currency}")
+        self.currency = currency

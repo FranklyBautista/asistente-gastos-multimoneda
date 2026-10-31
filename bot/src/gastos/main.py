@@ -9,15 +9,19 @@ from aiogram import Bot
 from aiogram.types import BotCommand
 
 from gastos.chat.dispatcher import build_dispatcher
-from gastos.config import get_settings
+from gastos.config import Settings, get_settings
 from gastos.db.pool import create_pool
 from gastos.db.repositories.rates import RateRepository
+from gastos.db.repositories.transactions import TransactionRepository
 from gastos.db.repositories.users import UserRepository
+from gastos.extraction.parser import Extractor
 from gastos.jobs.scheduler import build_scheduler
+from gastos.llm.gemini import GeminiClient
 from gastos.observability.logging import configure_logging
 from gastos.rates.base import create_http_client
 from gastos.rates.sources import HttpRateSources
 from gastos.services.rates import RateService
+from gastos.services.transactions import TransactionService
 from gastos.services.users import UserService
 
 COMMANDS = [
@@ -28,10 +32,24 @@ COMMANDS = [
 ]
 
 
+def build_llm(settings: Settings) -> GeminiClient:
+    """Falla al arrancar, y no con el primer mensaje, si el LLM no está configurado."""
+    if settings.llm_provider != "gemini":
+        raise SystemExit(f"LLM_PROVIDER={settings.llm_provider} todavía no está implementado")
+    if not settings.gemini_api_key:
+        raise SystemExit("Falta GEMINI_API_KEY en bot/.env")
+    return GeminiClient(
+        settings.gemini_api_key,
+        settings.gemini_models,
+        timeout_seconds=settings.llm_timeout_seconds,
+    )
+
+
 async def main() -> None:
     settings = get_settings()
     configure_logging(settings.env)
     log = structlog.get_logger()
+    llm = build_llm(settings)
 
     pool = create_pool(settings.database_url)
     await pool.open(wait=True, timeout=10)
@@ -42,7 +60,10 @@ async def main() -> None:
         HttpRateSources(http),
         max_age=timedelta(hours=settings.rates_max_age_hours),
     )
-    dp = build_dispatcher(settings.allowed_telegram_ids, UserService(UserRepository(pool)), rates)
+    transactions = TransactionService(TransactionRepository(pool), Extractor(llm), rates)
+    dp = build_dispatcher(
+        settings.allowed_telegram_ids, UserService(UserRepository(pool)), rates, transactions
+    )
     scheduler = build_scheduler(rates, settings.rates_refresh_minutes)
     try:
         scheduler.start()

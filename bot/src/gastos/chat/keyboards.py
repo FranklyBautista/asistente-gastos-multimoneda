@@ -54,3 +54,39 @@ def ves_source_keyboard() -> InlineKeyboardMarkup:
 
 def timezone_keyboard() -> InlineKeyboardMarkup:
     return _keyboard("tz", TIMEZONE_LABELS.items())
+
+
+class CurrencyChoice(CallbackData, prefix="cur"):
+    token: str  # pendiente en services.transactions
+    currency: str
+
+
+class UndoCallback(CallbackData, prefix="undo"):
+    transaction_id: str
+
+
+SHORT_CURRENCY_LABELS: Final[dict[Currency, str]] = {
+    "VES": "Bs",
+    "COP": "COP",
+    "USD": "USD",
+    "USDT": "USDT",
+}
+
+
+def choose_currency_keyboard(token: str, default: Currency) -> InlineKeyboardMarkup:
+    """Las 4 monedas en una fila, con la moneda por defecto del usuario primero."""
+    builder = InlineKeyboardBuilder()
+    ordered: list[Currency] = [default, *(c for c in SHORT_CURRENCY_LABELS if c != default)]
+    for currency in ordered:
+        builder.button(
+            text=SHORT_CURRENCY_LABELS[currency],
+            callback_data=CurrencyChoice(token=token, currency=currency),
+        )
+    builder.adjust(4)
+    return builder.as_markup()
+
+
+def undo_keyboard(transaction_id: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="↩️ Deshacer", callback_data=UndoCallback(transaction_id=transaction_id))
+    return builder.as_markup()

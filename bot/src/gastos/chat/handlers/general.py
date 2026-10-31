@@ -15,13 +15,11 @@ HELP = (
     "/perfil · ver tu configuración\n"
     "/tasas · ver las tasas de cambio vigentes\n"
     "/ayuda · ver esta ayuda\n\n"
-    "Pronto podrás escribir tus gastos como hablas, por ejemplo «almuerzo 15 bs»."
+    "Para anotar, escribe como hablas: «almuerzo 15 bs», «taxi 20 mil y café 3 dólares» "
+    "o «me pagaron 200 usdt». Si no queda clara la moneda, te pregunto con botones."
 )
 NEEDS_ONBOARDING = "Antes de empezar, configura tu cuenta con /start."
-NOT_YET = (
-    "Te leí, pero todavía no sé registrar gastos desde texto. "
-    "Escribe /ayuda para ver qué puedo hacer."
-)
+NOT_YET = "Solo entiendo mensajes de texto y los comandos de /ayuda."
 
 
 @router.message(Command("ayuda", "help"))

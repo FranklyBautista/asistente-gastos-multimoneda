@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     llm_provider: Literal["gemini", "groq"] = "gemini"
     gemini_api_key: str | None = None
     groq_api_key: str | None = None
+    # En orden: si uno está saturado o sin cuota, se usa el siguiente (ADR 0005).
+    gemini_models: list[str] = Field(
+        default=["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.8-flash"], min_length=1
+    )
+    llm_timeout_seconds: float = Field(default=20, gt=0)
     rates_api_key: str | None = None
     rates_refresh_minutes: int = Field(default=60, ge=5)
     rates_max_age_hours: int = Field(default=6, ge=1)
