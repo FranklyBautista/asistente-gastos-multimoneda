@@ -34,8 +34,8 @@ function Invoke-Step {
 function Invoke-BotChecks {
     Invoke-Step $Bot 'uv' @('run', 'ruff', 'check', '.')
     Invoke-Step $Bot 'uv' @('run', 'ruff', 'format', '--check', '.')
-    Invoke-Step $Bot 'uv' @('run', 'pyright')
-    # Se llama por Python: Windows Application Control bloquea el .exe de lint-imports.
+    # pyright y lint-imports se llaman por Python: Windows Application Control bloquea sus .exe.
+    Invoke-Step $Bot 'uv' @('run', 'python', '-m', 'pyright')
     Invoke-Step $Bot 'uv' @('run', 'python', '-c', 'import sys; from importlinter.cli import lint_imports; sys.exit(lint_imports())')
     Invoke-Step $Bot 'uv' @('run', 'pytest', 'tests/unit', '-q')
 }

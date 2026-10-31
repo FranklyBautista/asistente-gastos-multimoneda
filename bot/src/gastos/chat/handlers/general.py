@@ -13,6 +13,7 @@ HELP = (
     "Comandos:\n"
     "/start · configurar moneda por defecto, tasa de Bs y zona horaria\n"
     "/perfil · ver tu configuración\n"
+    "/tasas · ver las tasas de cambio vigentes\n"
     "/ayuda · ver esta ayuda\n\n"
     "Pronto podrás escribir tus gastos como hablas, por ejemplo «almuerzo 15 bs»."
 )
