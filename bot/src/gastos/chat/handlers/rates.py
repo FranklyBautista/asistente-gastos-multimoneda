@@ -1,13 +1,13 @@
 """Comando /tasas: las tasas vigentes, con aviso si alguna fuente lleva tiempo sin responder."""
 
-from datetime import UTC, datetime, timedelta
-from decimal import Decimal
+from datetime import UTC, datetime
 from typing import Final
 
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import LinkPreviewOptions, Message
 
+from gastos.chat.formatting import format_age, format_number
 from gastos.domain.conversion import units_per_usd
 from gastos.domain.currency import QuotedCurrency, RateSource, VesRateSource
 from gastos.domain.user import User
@@ -30,20 +30,6 @@ SOURCES_NOTE = (
 )
 
 Board = list[tuple[QuotedCurrency, RateSource, CurrentRate | None]]
-
-
-def format_number(value: Decimal, decimals: int) -> str:
-    """1234.5 → "1.234,50", como se escriben los montos en Venezuela y Colombia."""
-    return f"{value:,.{decimals}f}".replace(",", "_").replace(".", ",").replace("_", ".")
-
-
-def format_age(delta: timedelta) -> str:
-    hours = int(delta.total_seconds() // 3600)
-    if hours >= 48:
-        return f"{hours // 24} días"
-    if hours >= 1:
-        return f"{hours} h"
-    return f"{max(1, int(delta.total_seconds() // 60))} min"
 
 
 def _line(

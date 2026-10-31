@@ -4,13 +4,24 @@ import structlog
 from aiogram import Bot
 from aiogram.types import ErrorEvent
 
-from gastos.domain.errors import DomainError, InvalidPreference, RateUnavailable
+from gastos.domain.errors import (
+    AccountNotFound,
+    DomainError,
+    InvalidPreference,
+    LLMUnavailable,
+    RateUnavailable,
+)
 
 log = structlog.get_logger()
 
 GENERIC_ERROR = "Algo salió mal y no pude procesarlo. Inténtalo de nuevo en un momento."
 INVALID_OPTION = "Esa opción ya no es válida. Escribe /start para empezar de nuevo."
 NO_RATE = "Todavía no tengo la tasa de cambio de esa moneda. Inténtalo de nuevo en unos minutos."
+LLM_DOWN = (
+    "No pude entender el mensaje porque el servicio de IA no está respondiendo. "
+    "No anoté nada; inténtalo de nuevo en un momento."
+)
+NO_ACCOUNT = "No tienes ninguna cuenta activa en esa moneda, así que no anoté nada."
 
 
 def user_message_for(exc: Exception) -> str:
@@ -19,6 +30,10 @@ def user_message_for(exc: Exception) -> str:
         return INVALID_OPTION
     if isinstance(exc, RateUnavailable):
         return NO_RATE
+    if isinstance(exc, LLMUnavailable):
+        return LLM_DOWN
+    if isinstance(exc, AccountNotFound):
+        return NO_ACCOUNT
     return GENERIC_ERROR
 
 
