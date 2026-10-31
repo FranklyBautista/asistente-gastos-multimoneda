@@ -3,6 +3,7 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,6 +18,8 @@ class Settings(BaseSettings):
     gemini_api_key: str | None = None
     groq_api_key: str | None = None
     rates_api_key: str | None = None
+    rates_refresh_minutes: int = Field(default=60, ge=5)
+    rates_max_age_hours: int = Field(default=6, ge=1)
     webhook_url: str | None = None
     webhook_secret: str | None = None
 

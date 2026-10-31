@@ -4,18 +4,21 @@ import structlog
 from aiogram import Bot
 from aiogram.types import ErrorEvent
 
-from gastos.domain.errors import DomainError, InvalidPreference
+from gastos.domain.errors import DomainError, InvalidPreference, RateUnavailable
 
 log = structlog.get_logger()
 
 GENERIC_ERROR = "Algo salió mal y no pude procesarlo. Inténtalo de nuevo en un momento."
 INVALID_OPTION = "Esa opción ya no es válida. Escribe /start para empezar de nuevo."
+NO_RATE = "Todavía no tengo la tasa de cambio de esa moneda. Inténtalo de nuevo en unos minutos."
 
 
 def user_message_for(exc: Exception) -> str:
     """Traduce una excepción a un mensaje para el usuario, sin detalles internos."""
     if isinstance(exc, InvalidPreference):
         return INVALID_OPTION
+    if isinstance(exc, RateUnavailable):
+        return NO_RATE
     return GENERIC_ERROR
 
 
