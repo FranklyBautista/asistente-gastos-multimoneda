@@ -1,5 +1,6 @@
 """Registro desde texto libre con LLM, tasas y base de datos falsos."""
 
+from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -12,15 +13,12 @@ from gastos.domain.conversion import Rate
 from gastos.domain.currency import QuotedCurrency, RateSource
 from gastos.domain.errors import AccountNotFound, RateUnavailable
 from gastos.extraction.schema import Extraction
+from gastos.services.exchanges import ExchangeService
+from gastos.services.outcomes import Ask, NotATransaction
 from gastos.services.rates import RateService
-from gastos.services.transactions import (
-    Ask,
-    NeedsCurrency,
-    NotATransaction,
-    Saved,
-    TransactionService,
-)
+from gastos.services.transactions import NeedsCurrency, Saved, TransactionService
 from tests.fakes import (
+    FakeExchangeStore,
     FakeExtractor,
     FakeRateSources,
     FakeRateStore,
@@ -56,13 +54,23 @@ def tx(**fields: Any) -> dict[str, Any]:
     return base | fields
 
 
+def build(
+    store: FakeTransactionStore,
+    extractor: FakeExtractor,
+    rates: RateService,
+    clock: Callable[[], datetime] = lambda: NOW,
+) -> TransactionService:
+    exchanges = ExchangeService(FakeExchangeStore(), store, rates)
+    return TransactionService(store, extractor, rates, exchanges, clock=clock)
+
+
 def service(
     *transactions: dict[str, Any], rates: RateService | None = None, **extraction: Any
 ) -> tuple[TransactionService, FakeTransactionStore]:
     data = {"intent": "log_transactions", "confidence": 0.9, "transactions": list(transactions)}
     store = FakeTransactionStore()
     extractor = FakeExtractor(Extraction.model_validate(data | extraction))
-    svc = TransactionService(store, extractor, rates or rate_service(*RATES), clock=lambda: NOW)
+    svc = build(store, extractor, rates or rate_service(*RATES))
     return svc, store
 
 
@@ -149,7 +157,7 @@ async def test_el_pendiente_expira() -> None:
             }
         )
     )
-    svc = TransactionService(store, extractor, rate_service(*RATES), clock=lambda: clock[0])
+    svc = build(store, extractor, rate_service(*RATES), clock=lambda: clock[0])
     outcome = await svc.register_text(USER, "15")
     assert isinstance(outcome, NeedsCurrency)
     clock[0] = NOW + timedelta(hours=1)
@@ -178,7 +186,7 @@ async def test_respeta_la_fuente_de_bs_del_usuario() -> None:
     assert store.batches[0][0].snapshot.rate_source == "bcv"
 
 
-@pytest.mark.parametrize("intent", ["log_exchange", "query", "correction", "other"])
+@pytest.mark.parametrize("intent", ["query", "correction", "other"])
 async def test_otras_intenciones_no_guardan(intent: str) -> None:
     svc, store = service(intent=intent)
     assert await svc.register_text(USER, "...") == NotATransaction(intent)  # type: ignore[arg-type]

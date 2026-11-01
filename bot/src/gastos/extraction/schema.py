@@ -1,7 +1,7 @@
 """Esquema de salida del LLM (sección Diseño técnico). Lo que no valide no se guarda.
 
-`ParsedExchange` llega con la Fase 5; mientras tanto, la intención `log_exchange` basta
-para no registrar un cambio de moneda como si fuera un gasto.
+Un cambio de moneda (`log_exchange`) llega en `exchange`, no en `transactions`: no es
+gasto ni ingreso.
 """
 
 from typing import Any, Literal
@@ -41,6 +41,25 @@ class ParsedTransaction(LLMOutput):
     )
 
 
+class ParsedExchange(LLMOutput):
+    from_currency: Currency | None = Field(
+        default=None, description="La moneda que entregó; null si no se dice"
+    )
+    to_currency: Currency | None = Field(
+        default=None, description="La moneda que recibió; null si no se dice"
+    )
+    from_amount: float | None = Field(default=None, gt=0, description="Cuánto entregó")
+    to_amount: float | None = Field(default=None, gt=0, description="Cuánto recibió")
+    rate: float | None = Field(
+        default=None, gt=0, description='La tasa tal como la dijo ("a 985" -> 985)'
+    )
+    from_account_hint: str | None = Field(default=None, description="Cuenta de la que salió")
+    to_account_hint: str | None = Field(default=None, description="Cuenta a la que entró")
+    occurred_at: str | None = Field(
+        default=None, description="ISO 8601 con hora local; null = ahora"
+    )
+
+
 class Clarification(LLMOutput):
     field: Literal["currency", "amount", "account", "kind"]
     question: str = Field(description="En español, una línea")
@@ -50,6 +69,9 @@ class Extraction(LLMOutput):
     intent: Literal["log_transactions", "log_exchange", "query", "correction", "other"]
     transactions: list[ParsedTransaction] = Field(
         default_factory=list, description="Vacío si intent no es log_transactions"
+    )
+    exchange: ParsedExchange | None = Field(
+        default=None, description="Solo con intent log_exchange"
     )
     clarification: Clarification | None = None
     confidence: float = Field(ge=0, le=1)

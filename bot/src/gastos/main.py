@@ -11,6 +11,7 @@ from aiogram.types import BotCommand
 from gastos.chat.dispatcher import build_dispatcher
 from gastos.config import Settings, get_settings
 from gastos.db.pool import create_pool
+from gastos.db.repositories.exchanges import ExchangeRepository
 from gastos.db.repositories.rates import RateRepository
 from gastos.db.repositories.transactions import TransactionRepository
 from gastos.db.repositories.users import UserRepository
@@ -20,6 +21,7 @@ from gastos.llm.gemini import GeminiClient
 from gastos.observability.logging import configure_logging
 from gastos.rates.base import create_http_client
 from gastos.rates.sources import HttpRateSources
+from gastos.services.exchanges import ExchangeService
 from gastos.services.rates import RateService
 from gastos.services.transactions import TransactionService
 from gastos.services.users import UserService
@@ -60,7 +62,9 @@ async def main() -> None:
         HttpRateSources(http),
         max_age=timedelta(hours=settings.rates_max_age_hours),
     )
-    transactions = TransactionService(TransactionRepository(pool), Extractor(llm), rates)
+    transaction_repo = TransactionRepository(pool)
+    exchanges = ExchangeService(ExchangeRepository(pool), transaction_repo, rates)
+    transactions = TransactionService(transaction_repo, Extractor(llm), rates, exchanges)
     dp = build_dispatcher(
         settings.allowed_telegram_ids, UserService(UserRepository(pool)), rates, transactions
     )

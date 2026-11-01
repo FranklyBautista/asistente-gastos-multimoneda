@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from gastos.domain.account import Account, Category
 from gastos.domain.conversion import Rate
 from gastos.domain.currency import Currency, QuotedCurrency, RateSource, VesRateSource
+from gastos.domain.exchange import NewExchange, SavedExchange
 from gastos.domain.transaction import NewTransaction, SavedTransaction
 from gastos.domain.user import User
 from gastos.extraction.parser import Categories
@@ -183,15 +184,54 @@ class FakeTransactionStore:
 
 
 class FakeExtractor:
-    """Implementa services.transactions.TextExtractor con una respuesta fija."""
+    """Implementa services.transactions.TextExtractor: devuelve las respuestas en orden.
 
-    def __init__(self, result: Extraction) -> None:
-        self.result = result
-        self.calls: list[tuple[str, Categories, datetime]] = []
+    La última se repite, así que con una sola respuesta sirve para cualquier número de llamadas.
+    """
 
-    async def extract(self, text: str, categories: Categories, now_local: datetime) -> Extraction:
-        self.calls.append((text, categories, now_local))
-        return self.result
+    def __init__(self, *results: Extraction) -> None:
+        self.results = list(results)
+        self.calls: list[tuple[str, tuple[str, str] | None]] = []
+
+    async def extract(
+        self,
+        text: str,
+        categories: Categories,
+        now_local: datetime,
+        previous: tuple[str, str] | None = None,
+    ) -> Extraction:
+        self.calls.append((text, previous))
+        return self.results.pop(0) if len(self.results) > 1 else self.results[0]
+
+
+class FakeExchangeStore:
+    """Implementa services.exchanges.ExchangeStore en memoria."""
+
+    def __init__(self) -> None:
+        self.saved: list[NewExchange] = []
+        self.deleted: set[UUID] = set()
+        self.ids: list[UUID] = []
+
+    async def insert(self, user_id: UUID, item: NewExchange) -> SavedExchange:
+        self.saved.append(item)
+        exchange_id = uuid4()
+        self.ids.append(exchange_id)
+        return SavedExchange(
+            id=exchange_id,
+            from_currency=item.from_account.currency,
+            to_currency=item.to_account.currency,
+            amounts=item.amounts,
+            reference_rate=item.reference_rate,
+            from_account_name=item.from_account.name,
+            to_account_name=item.to_account.name,
+            occurred_at=item.occurred_at or datetime.now(UTC),
+        )
+
+    async def undo(self, user_id: UUID, exchange_id: UUID) -> int:
+        if exchange_id not in self.ids or exchange_id in self.deleted:
+            return 0
+        self.deleted.add(exchange_id)
+        return 1
 
 
 class FakeLLM:

@@ -16,7 +16,9 @@ HELP = (
     "/tasas · ver las tasas de cambio vigentes\n"
     "/ayuda · ver esta ayuda\n\n"
     "Para anotar, escribe como hablas: «almuerzo 15 bs», «taxi 20 mil y café 3 dólares» "
-    "o «me pagaron 200 usdt». Si no queda clara la moneda, te pregunto con botones."
+    "o «me pagaron 200 usdt». Si no queda clara la moneda, te pregunto con botones.\n\n"
+    "Para un cambio de moneda: «cambié 50 usdt a bs a 985» o «vendí 100 dólares por "
+    "98.500 bs». Te digo cómo te fue frente a la tasa de referencia."
 )
 NEEDS_ONBOARDING = "Antes de empezar, configura tu cuenta con /start."
 NOT_YET = "Solo entiendo mensajes de texto y los comandos de /ayuda."

@@ -34,3 +34,12 @@ def rate_source_for(currency: QuotedCurrency, ves_rate_source: VesRateSource) ->
     if currency == "COP":
         return "fx"
     return "coingecko"
+
+
+# Cómo se nombra cada moneda en las preguntas del bot ("¿cuántos dólares recibiste?").
+CURRENCY_NAMES: Final[dict[Currency, str]] = {
+    "VES": "bolívares",
+    "COP": "pesos",
+    "USD": "dólares",
+    "USDT": "USDT",
+}
