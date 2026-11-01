@@ -8,7 +8,7 @@ from collections.abc import Iterable
 from datetime import datetime
 from typing import Final
 
-PROMPT_VERSION: Final = "extraccion-v2"
+PROMPT_VERSION: Final = "extraccion-v4"
 
 _RULES = """\
 Eres el extractor de un bot de finanzas personales para alguien que vive con cuatro monedas:
@@ -19,7 +19,7 @@ Intención (intent):
 - log_transactions: registra uno o varios gastos o ingresos.
 - log_exchange: un cambio de una moneda a otra ("cambié 50 usdt a bs", "vendí 100 dólares",
   "compré usdt"). No es gasto ni ingreso: va en exchange y transactions va vacío.
-- query: una pregunta sobre sus finanzas ("¿cuánto gasté esta semana?").
+- query: una pregunta sobre sus finanzas ("¿cuánto gasté esta semana?"). Va en query.
 - correction: corrige un movimiento anterior ("eso fue transporte", "no, eran pesos").
 - other: saludos o cualquier otra cosa. Con intent distinto de log_transactions,
   transactions va vacío; exchange solo se llena con log_exchange.
@@ -67,6 +67,23 @@ Cambios de moneda (exchange):
 - rate es el número tal como lo dijo ("a 985" -> 985), aunque esté al revés.
 - Las cuentas van en from_account_hint y to_account_hint solo si se mencionan.
 - Si falta algo, no uses clarification: el bot pregunta lo que haga falta.
+
+Preguntas (query): elige una herramienta y sus parámetros. Nunca respondas tú la pregunta
+ni inventes cifras: el bot consulta la base de datos.
+- spending_by_category: en qué se le fue el dinero, gasto por categoría.
+- totals: cuánto gastó (kind expense) o cuánto le entró (kind income) en total; con
+  category si pregunta por una ("¿cuánto gasté en comida?").
+- account_balances: cuánto tiene, saldos de sus cuentas. No lleva periodo.
+- list_transactions: sus últimos movimientos o los de un periodo; limit si dice cuántos.
+- period es uno de: today, yesterday, this_week, last_week, last_7_days, this_month,
+  last_month, last_30_days, month, this_year, all_time. "En octubre" -> month con month 10
+  (year solo si lo dice). Si no dice periodo, null: el bot usa uno por defecto. Nunca
+  escribas fechas.
+- currency solo si pregunta por una moneda ("¿cuántos bolívares gasté?").
+- category solo si pregunta por una: el nombre de la lista si existe; si no existe, la
+  palabra tal como la dijo ("mascotas"). Nunca la cambies por otra categoría ("otros")
+  ni la dejes en null: el bot avisa que no existe.
+- in_usd true solo si pide el total en dólares o "todo junto en dólares".
 
 Aclaración (clarification): úsala solo si falta algo imprescindible.
 - Falta el monto ("gasté en el almuerzo"): field "amount", transactions vacío.
@@ -148,7 +165,32 @@ Ejemplos (mensaje -> JSON):
 "rate":null}}
 
 "¿cuánto gasté esta semana?" ->
-{"intent":"query","confidence":0.95,"transactions":[]}
+{"intent":"query","confidence":0.95,"transactions":[],"query":{"tool":"totals",
+"period":"this_week","kind":"expense"}}
+
+"¿en qué se me fue la plata el mes pasado?" ->
+{"intent":"query","confidence":0.95,"transactions":[],"query":{
+"tool":"spending_by_category","period":"last_month"}}
+
+"¿cuánto gasté en comida en octubre, todo en dólares?" ->
+{"intent":"query","confidence":0.95,"transactions":[],"query":{"tool":"totals",
+"period":"month","month":10,"kind":"expense","category":"comida","in_usd":true}}
+
+"¿cuánto tengo?" ->
+{"intent":"query","confidence":0.95,"transactions":[],"query":{
+"tool":"account_balances"}}
+
+"muéstrame mis últimos 5 gastos en bs" ->
+{"intent":"query","confidence":0.95,"transactions":[],"query":{
+"tool":"list_transactions","kind":"expense","currency":"VES","limit":5}}
+
+"¿cuánto gasté en mascotas este mes?" ->
+{"intent":"query","confidence":0.9,"transactions":[],"query":{"tool":"totals",
+"period":"this_month","kind":"expense","category":"mascotas"}}
+
+"¿cuánto me entró este año?" ->
+{"intent":"query","confidence":0.95,"transactions":[],"query":{"tool":"totals",
+"period":"this_year","kind":"income"}}
 
 "eso fue transporte" ->
 {"intent":"correction","confidence":0.9,"transactions":[]}

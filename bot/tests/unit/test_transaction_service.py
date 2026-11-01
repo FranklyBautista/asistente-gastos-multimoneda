@@ -15,6 +15,7 @@ from gastos.domain.errors import AccountNotFound, RateUnavailable
 from gastos.extraction.schema import Extraction
 from gastos.services.exchanges import ExchangeService
 from gastos.services.outcomes import Ask, NotATransaction
+from gastos.services.query_tools import QueryService
 from gastos.services.rates import RateService
 from gastos.services.transactions import NeedsCurrency, Saved, TransactionService
 from tests.fakes import (
@@ -22,6 +23,7 @@ from tests.fakes import (
     FakeExtractor,
     FakeRateSources,
     FakeRateStore,
+    FakeReportStore,
     FakeTransactionStore,
     make_accounts,
     make_user,
@@ -61,7 +63,8 @@ def build(
     clock: Callable[[], datetime] = lambda: NOW,
 ) -> TransactionService:
     exchanges = ExchangeService(FakeExchangeStore(), store, rates)
-    return TransactionService(store, extractor, rates, exchanges, clock=clock)
+    queries = QueryService(FakeReportStore(), store, rates)
+    return TransactionService(store, extractor, rates, exchanges, queries, clock=clock)
 
 
 def service(
