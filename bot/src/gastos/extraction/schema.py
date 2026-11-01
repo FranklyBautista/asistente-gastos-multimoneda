@@ -8,6 +8,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from gastos.domain.periods import Period
+
 Currency = Literal["VES", "COP", "USD", "USDT"]
 
 
@@ -60,6 +62,26 @@ class ParsedExchange(LLMOutput):
     )
 
 
+class ParsedQuery(LLMOutput):
+    """Una pregunta sobre sus finanzas: qué herramienta usar y con qué parámetros."""
+
+    tool: Literal["spending_by_category", "totals", "account_balances", "list_transactions"]
+    period: Period | None = Field(
+        default=None, description='Periodo de la lista; "month" con month para un mes concreto'
+    )
+    month: int | None = Field(default=None, ge=1, le=12, description="Solo con period month")
+    year: int | None = Field(default=None, ge=2000, le=2100, description="Solo si lo dice")
+    kind: Literal["expense", "income"] | None = Field(
+        default=None, description="Gastos o ingresos (totals y list_transactions)"
+    )
+    currency: Currency | None = Field(default=None, description="Solo si pregunta por una")
+    category: str | None = Field(default=None, description="Solo si pregunta por una")
+    in_usd: bool = Field(default=False, description="true solo si pide el total en dólares")
+    limit: int | None = Field(
+        default=None, ge=1, le=20, description="Cuántos movimientos (list_transactions)"
+    )
+
+
 class Clarification(LLMOutput):
     field: Literal["currency", "amount", "account", "kind"]
     question: str = Field(description="En español, una línea")
@@ -70,6 +92,7 @@ class Extraction(LLMOutput):
     transactions: list[ParsedTransaction] = Field(
         default_factory=list, description="Vacío si intent no es log_transactions"
     )
+    query: ParsedQuery | None = Field(default=None, description="Solo con intent query")
     exchange: ParsedExchange | None = Field(
         default=None, description="Solo con intent log_exchange"
     )

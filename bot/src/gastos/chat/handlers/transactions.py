@@ -6,10 +6,12 @@ from typing import Final
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
+import structlog
 from aiogram import Bot, F, Router
 from aiogram.types import CallbackQuery, Message
 from aiogram.utils.chat_action import ChatActionSender
 
+from gastos.chat.answers import CAN_ANSWER, answer_text
 from gastos.chat.formatting import SYMBOLS, format_age, format_money, format_number
 from gastos.chat.handlers.rates import LABELS
 from gastos.chat.keyboards import (
@@ -26,9 +28,17 @@ from gastos.domain.transaction import SavedTransaction, TransactionDraft
 from gastos.domain.user import User
 from gastos.services.exchanges import ExchangeSaved
 from gastos.services.outcomes import Ask, NotATransaction
+from gastos.services.query_tools import (
+    BalancesAnswer,
+    SpendingAnswer,
+    TotalsAnswer,
+    TransactionsAnswer,
+    UnknownCategory,
+)
 from gastos.services.transactions import NeedsCurrency, Saved, TransactionService
 
 router = Router(name="transactions")
+log = structlog.get_logger()
 
 NEEDS_ONBOARDING = "Antes de empezar, configura tu cuenta con /start."
 NOT_A_TRANSACTION: Final[dict[str, str]] = {
@@ -36,7 +46,7 @@ NOT_A_TRANSACTION: Final[dict[str, str]] = {
         "Eso parece un movimiento entre cuentas de la misma moneda; "
         "todavía no registro transferencias, así que no anoté nada."
     ),
-    "query": "Todavía no sé responder preguntas sobre tus gastos; muy pronto podré.",
+    "query": f"No entendí bien la pregunta. {CAN_ANSWER}",
     "correction": ("Para corregir, toca ↩️ Deshacer en la confirmación y escríbelo de nuevo."),
     "other": (
         "No vi un gasto ni un ingreso en ese mensaje. "
@@ -143,6 +153,7 @@ async def register(
         return
     async with ChatActionSender.typing(bot=bot, chat_id=message.chat.id):
         outcome = await transactions.register_text(user, message.text or "")
+    log.info("message_answered", outcome=type(outcome).__name__)
     match outcome:
         case Saved():
             await message.answer(
@@ -154,6 +165,14 @@ async def register(
                 question_text(drafts),
                 reply_markup=choose_currency_keyboard(token, user.default_currency),
             )
+        case (
+            SpendingAnswer()
+            | TotalsAnswer()
+            | BalancesAnswer()
+            | TransactionsAnswer()
+            | UnknownCategory()
+        ):
+            await message.answer(answer_text(outcome, user, datetime.now(UTC)))
         case ExchangeSaved():
             await message.answer(
                 exchange_text(outcome, user, datetime.now(UTC)),

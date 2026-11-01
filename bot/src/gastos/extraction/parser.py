@@ -46,6 +46,10 @@ class Extractor:
             intent=extraction.intent,
             transactions=len(extraction.transactions),
             exchange=extraction.exchange is not None,
+            # Herramienta y parámetros elegidos: sin datos del usuario, solo la decisión.
+            query=extraction.query.model_dump(exclude_none=True, exclude_defaults=True)
+            if extraction.query
+            else None,
             followup=previous is not None,
             confidence=extraction.confidence,
         )

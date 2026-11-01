@@ -13,6 +13,7 @@ from gastos.config import Settings, get_settings
 from gastos.db.pool import create_pool
 from gastos.db.repositories.exchanges import ExchangeRepository
 from gastos.db.repositories.rates import RateRepository
+from gastos.db.repositories.reports import ReportRepository
 from gastos.db.repositories.transactions import TransactionRepository
 from gastos.db.repositories.users import UserRepository
 from gastos.extraction.parser import Extractor
@@ -22,6 +23,7 @@ from gastos.observability.logging import configure_logging
 from gastos.rates.base import create_http_client
 from gastos.rates.sources import HttpRateSources
 from gastos.services.exchanges import ExchangeService
+from gastos.services.query_tools import QueryService
 from gastos.services.rates import RateService
 from gastos.services.transactions import TransactionService
 from gastos.services.users import UserService
@@ -64,7 +66,8 @@ async def main() -> None:
     )
     transaction_repo = TransactionRepository(pool)
     exchanges = ExchangeService(ExchangeRepository(pool), transaction_repo, rates)
-    transactions = TransactionService(transaction_repo, Extractor(llm), rates, exchanges)
+    queries = QueryService(ReportRepository(pool), transaction_repo, rates)
+    transactions = TransactionService(transaction_repo, Extractor(llm), rates, exchanges, queries)
     dp = build_dispatcher(
         settings.allowed_telegram_ids, UserService(UserRepository(pool)), rates, transactions
     )

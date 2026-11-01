@@ -12,7 +12,8 @@ from gastos.domain.account import Account, Category
 from gastos.domain.conversion import Rate
 from gastos.domain.currency import Currency, QuotedCurrency, RateSource, VesRateSource
 from gastos.domain.exchange import NewExchange, SavedExchange
-from gastos.domain.transaction import NewTransaction, SavedTransaction
+from gastos.domain.reports import AccountBalance, CategoryTotal, CurrencyTotal, TransactionRow
+from gastos.domain.transaction import NewTransaction, SavedTransaction, TransactionKind
 from gastos.domain.user import User
 from gastos.extraction.parser import Categories
 from gastos.extraction.schema import Extraction
@@ -244,3 +245,79 @@ class FakeLLM:
     async def structured[T: BaseModel](self, *, system: str, prompt: str, schema: type[T]) -> T:
         self.calls.append((system, prompt))
         return schema.model_validate(_or_raise(self._responses.pop(0)))
+
+
+class FakeReportStore:
+    """Implementa services.query_tools.ReportStore: respuestas fijas y registro de llamadas."""
+
+    def __init__(
+        self,
+        *,
+        spending: list[CategoryTotal] | None = None,
+        totals: list[CurrencyTotal] | None = None,
+        balances: list[AccountBalance] | None = None,
+        transactions: list[TransactionRow] | None = None,
+    ) -> None:
+        self.spending = spending or []
+        self.totals_rows = totals or []
+        self.balances = balances or []
+        self.transactions = transactions or []
+        self.calls: list[tuple[str, dict[str, Any]]] = []
+
+    async def spending_by_category(
+        self, user_id: UUID, start: datetime, end: datetime, currency: Currency | None
+    ) -> list[CategoryTotal]:
+        self.calls.append(("spending", {"start": start, "end": end, "currency": currency}))
+        return self.spending
+
+    async def totals(
+        self,
+        user_id: UUID,
+        kind: TransactionKind,
+        start: datetime,
+        end: datetime,
+        currency: Currency | None,
+        category: str | None,
+    ) -> list[CurrencyTotal]:
+        self.calls.append(
+            (
+                "totals",
+                {
+                    "kind": kind,
+                    "start": start,
+                    "end": end,
+                    "currency": currency,
+                    "category": category,
+                },
+            )
+        )
+        return self.totals_rows
+
+    async def account_balances(self, user_id: UUID) -> list[AccountBalance]:
+        self.calls.append(("balances", {}))
+        return self.balances
+
+    async def list_transactions(
+        self,
+        user_id: UUID,
+        start: datetime,
+        end: datetime,
+        kind: TransactionKind | None,
+        currency: Currency | None,
+        category: str | None,
+        limit: int,
+    ) -> list[TransactionRow]:
+        self.calls.append(
+            (
+                "list",
+                {
+                    "start": start,
+                    "end": end,
+                    "kind": kind,
+                    "currency": currency,
+                    "category": category,
+                    "limit": limit,
+                },
+            )
+        )
+        return self.transactions

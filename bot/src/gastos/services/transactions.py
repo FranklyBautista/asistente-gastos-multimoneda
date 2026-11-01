@@ -31,6 +31,7 @@ from gastos.extraction.parser import Categories, to_drafts, to_exchange_draft
 from gastos.extraction.schema import Extraction
 from gastos.services.exchanges import ExchangeSaved, ExchangeService
 from gastos.services.outcomes import Ask, NotATransaction
+from gastos.services.query_tools import QueryAnswer, QueryService
 from gastos.services.rates import CurrentRate
 
 PENDING_TTL: Final = timedelta(minutes=30)
@@ -85,7 +86,7 @@ class NeedsCurrency:
     drafts: list[TransactionDraft]  # todos los del mensaje; los dudosos con `needs_currency`
 
 
-Outcome = Saved | NeedsCurrency | ExchangeSaved | Ask | NotATransaction
+Outcome = Saved | NeedsCurrency | ExchangeSaved | QueryAnswer | Ask | NotATransaction
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,12 +138,14 @@ class TransactionService:
         extractor: TextExtractor,
         rates: UserRates,
         exchanges: ExchangeService,
+        queries: QueryService,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
         self._store = store
         self._extractor = extractor
         self._rates = rates
         self._exchanges = exchanges
+        self._queries = queries
         self._clock = clock
         self._pending = PendingStore(clock)
         self._followups: dict[UUID, _Followup] = {}
@@ -177,6 +180,8 @@ class TransactionService:
                 return Ask("¿Qué moneda cambiaste, cuánto y a qué tasa?")
             draft = to_exchange_draft(extraction.exchange, now_local)
             return await self._exchanges.register(user, draft, raw_text)
+        if extraction.intent == "query" and extraction.query is not None:
+            return await self._queries.answer(user, extraction.query, now_local)
         if extraction.intent != "log_transactions":
             return NotATransaction(extraction.intent)
         if extraction.clarification and extraction.clarification.field != "currency":
