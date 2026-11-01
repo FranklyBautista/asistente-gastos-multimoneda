@@ -8,7 +8,7 @@ from collections.abc import Iterable
 from datetime import datetime
 from typing import Final
 
-PROMPT_VERSION: Final = "extraccion-v1"
+PROMPT_VERSION: Final = "extraccion-v2"
 
 _RULES = """\
 Eres el extractor de un bot de finanzas personales para alguien que vive con cuatro monedas:
@@ -17,11 +17,12 @@ como se habla en JSON. Nunca inventas datos que el mensaje no dice.
 
 Intención (intent):
 - log_transactions: registra uno o varios gastos o ingresos.
-- log_exchange: un cambio de una moneda a otra ("cambié 50 usdt a bs"). No es gasto ni ingreso.
+- log_exchange: un cambio de una moneda a otra ("cambié 50 usdt a bs", "vendí 100 dólares",
+  "compré usdt"). No es gasto ni ingreso: va en exchange y transactions va vacío.
 - query: una pregunta sobre sus finanzas ("¿cuánto gasté esta semana?").
 - correction: corrige un movimiento anterior ("eso fue transporte", "no, eran pesos").
 - other: saludos o cualquier otra cosa. Con intent distinto de log_transactions,
-  transactions va vacío.
+  transactions va vacío; exchange solo se llena con log_exchange.
 
 Montos:
 - amount es siempre positivo; kind dice si es gasto (expense) o ingreso (income).
@@ -54,6 +55,18 @@ Cuenta (account_hint): solo si el mensaje la menciona ("efectivo", "binance", "b
 Fecha (occurred_at): null si es ahora o no se dice. Para "ayer", "el lunes" o una fecha,
 devuelve ISO 8601 con la hora local, a partir de la fecha y hora actuales que se indican;
 si no dice la hora, usa las 12:00.
+
+Cambios de moneda (exchange):
+- from_currency es lo que entregó y to_currency lo que recibió. "Vendí 100 dólares por bs":
+  from USD, to VES. "Compré 20 usdt con bs": from VES, to USDT. "Cambié 50 usdt a bs":
+  from USDT, to VES.
+- Las monedas siguen el mismo léxico de arriba. Si una no se dice, déjala null; no la
+  deduzcas de la tasa.
+- from_amount, to_amount y rate: llena solo los que dice el mensaje; el bot calcula el que
+  falta. Nunca hagas tú la cuenta.
+- rate es el número tal como lo dijo ("a 985" -> 985), aunque esté al revés.
+- Las cuentas van en from_account_hint y to_account_hint solo si se mencionan.
+- Si falta algo, no uses clarification: el bot pregunta lo que haga falta.
 
 Aclaración (clarification): úsala solo si falta algo imprescindible.
 - Falta el monto ("gasté en el almuerzo"): field "amount", transactions vacío.
@@ -116,8 +129,23 @@ Ejemplos (mensaje -> JSON):
 {"kind":"expense","amount":5000,"currency":null,"currency_confidence":0,"category":"comida",
 "description":"arepas"}]}
 
-"cambié 50 usdt a bs a 78" ->
-{"intent":"log_exchange","confidence":0.95,"transactions":[]}
+"cambié 50 usdt a bs a 985" ->
+{"intent":"log_exchange","confidence":0.95,"transactions":[],"exchange":{
+"from_currency":"USDT","to_currency":"VES","from_amount":50,"to_amount":null,"rate":985}}
+
+"vendí 100 dólares en efectivo y me dieron 98.500 bs en banesco" ->
+{"intent":"log_exchange","confidence":0.95,"transactions":[],"exchange":{
+"from_currency":"USD","to_currency":"VES","from_amount":100,"to_amount":98500,"rate":null,
+"from_account_hint":"efectivo","to_account_hint":"banesco"}}
+
+"compré 20 usdt a 990" ->
+{"intent":"log_exchange","confidence":0.8,"transactions":[],"exchange":{
+"from_currency":null,"to_currency":"USDT","from_amount":null,"to_amount":20,"rate":990}}
+
+"cambié 200 mil pesos a dólares" ->
+{"intent":"log_exchange","confidence":0.9,"transactions":[],"exchange":{
+"from_currency":"COP","to_currency":"USD","from_amount":200000,"to_amount":null,
+"rate":null}}
 
 "¿cuánto gasté esta semana?" ->
 {"intent":"query","confidence":0.95,"transactions":[]}
@@ -155,5 +183,17 @@ def system_prompt(
     return f"{_RULES}\n{context}\n\n{_EXAMPLES}"
 
 
-def user_prompt(text: str) -> str:
-    return f"Mensaje: {text}"
+def user_prompt(text: str, previous: tuple[str, str] | None = None) -> str:
+    """El mensaje; si responde a una pregunta del bot, junto con el mensaje que la originó."""
+    if previous is None:
+        return f"Mensaje: {text}"
+    earlier, question = previous
+    return (
+        f"Mensaje anterior: {earlier}\n"
+        f"Pregunta del bot: {question}\n"
+        f"Respuesta: {text}\n\n"
+        "Interpreta el mensaje anterior completado con la respuesta, con la intención del "
+        "mensaje anterior (por ejemplo log_exchange); completar un dato no es correction. Si la "
+        "respuesta no tiene que ver con la pregunta, ignora el mensaje anterior e interpreta "
+        "solo la respuesta."
+    )

@@ -90,3 +90,13 @@ def undo_keyboard(transaction_id: str) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="↩️ Deshacer", callback_data=UndoCallback(transaction_id=transaction_id))
     return builder.as_markup()
+
+
+class UndoExchangeCallback(CallbackData, prefix="undox"):
+    exchange_id: str
+
+
+def undo_exchange_keyboard(exchange_id: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="↩️ Deshacer", callback_data=UndoExchangeCallback(exchange_id=exchange_id))
+    return builder.as_markup()

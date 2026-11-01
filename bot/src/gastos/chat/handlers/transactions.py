@@ -11,29 +11,31 @@ from aiogram.types import CallbackQuery, Message
 from aiogram.utils.chat_action import ChatActionSender
 
 from gastos.chat.formatting import SYMBOLS, format_age, format_money, format_number
+from gastos.chat.handlers.rates import LABELS
 from gastos.chat.keyboards import (
     CurrencyChoice,
     UndoCallback,
+    UndoExchangeCallback,
     choose_currency_keyboard,
+    undo_exchange_keyboard,
     undo_keyboard,
 )
 from gastos.domain.conversion import Rate
-from gastos.domain.currency import parse_currency
+from gastos.domain.currency import Currency, parse_currency
 from gastos.domain.transaction import SavedTransaction, TransactionDraft
 from gastos.domain.user import User
-from gastos.services.transactions import (
-    Ask,
-    NeedsCurrency,
-    NotATransaction,
-    Saved,
-    TransactionService,
-)
+from gastos.services.exchanges import ExchangeSaved
+from gastos.services.outcomes import Ask, NotATransaction
+from gastos.services.transactions import NeedsCurrency, Saved, TransactionService
 
 router = Router(name="transactions")
 
 NEEDS_ONBOARDING = "Antes de empezar, configura tu cuenta con /start."
 NOT_A_TRANSACTION: Final[dict[str, str]] = {
-    "log_exchange": "Todavía no sé registrar cambios entre monedas, así que no anoté nada.",
+    "transfer": (
+        "Eso parece un movimiento entre cuentas de la misma moneda; "
+        "todavía no registro transferencias, así que no anoté nada."
+    ),
     "query": "Todavía no sé responder preguntas sobre tus gastos; muy pronto podré.",
     "correction": ("Para corregir, toca ↩️ Deshacer en la confirmación y escríbelo de nuevo."),
     "other": (
@@ -90,6 +92,48 @@ def confirmation_text(saved: Saved, user: User, now: datetime) -> str:
     return "\n\n".join([text, *notes])
 
 
+def _rate_text(rate: Decimal, source: Currency, target: Currency, *, invert: bool) -> str:
+    """Como se cotiza en la calle: la moneda débil por 1 de la fuerte ("985,00 Bs por USDT")."""
+    if invert:
+        rate, source, target = 1 / rate, target, source
+    decimals = 4 if rate < 10 else 2
+    return f"{format_number(rate, decimals)} {SYMBOLS[target]} por {SYMBOLS[source]}"
+
+
+def _difference_text(diff: Decimal) -> str:
+    if diff == 0:
+        return "igual que la referencia"
+    pct = format_number(abs(diff), 2)
+    return f"recibiste {pct} % {'más' if diff > 0 else 'menos'} que con la referencia"
+
+
+def exchange_text(saved: ExchangeSaved, user: User, now: datetime) -> str:
+    ex = saved.exchange
+    source, target, amounts = ex.from_currency, ex.to_currency, ex.amounts
+    # Misma orientación para la tasa efectiva y la de referencia, para poder compararlas.
+    invert = amounts.effective_rate < 1
+    head = (
+        f"🔁 Cambio · {format_money(amounts.from_amount, source)} → "
+        f"{format_money(amounts.to_amount, target)} · a "
+        f"{_rate_text(amounts.effective_rate, source, target, invert=invert)}"
+    )
+    tz = ZoneInfo(user.timezone)
+    occurred = ex.occurred_at.astimezone(tz)
+    if occurred.date() != now.astimezone(tz).date():
+        head += f" · {occurred.strftime('%d/%m')}"
+    lines = [head]
+    if ex.reference_rate is None or saved.difference_pct is None:
+        lines.append("Sin tasa de referencia guardada para comparar.")
+    else:
+        sources = " y ".join(LABELS[c.rate.source] for c in saved.reference_rates)
+        reference = _rate_text(ex.reference_rate, source, target, invert=invert)
+        lines.append(
+            f"Referencia ({sources}): {reference}; {_difference_text(saved.difference_pct)}."
+        )
+    notes = [_stale_note(c.rate, now) for c in saved.reference_rates if c.stale]
+    return "\n\n".join(["\n".join(lines), *notes])
+
+
 @router.message(F.text & ~F.text.startswith("/"))
 async def register(
     message: Message, bot: Bot, user: User, transactions: TransactionService
@@ -109,6 +153,11 @@ async def register(
             await message.answer(
                 question_text(drafts),
                 reply_markup=choose_currency_keyboard(token, user.default_currency),
+            )
+        case ExchangeSaved():
+            await message.answer(
+                exchange_text(outcome, user, datetime.now(UTC)),
+                reply_markup=undo_exchange_keyboard(str(outcome.exchange.id)),
             )
         case Ask(question=question):
             await message.answer(question)
@@ -142,6 +191,22 @@ async def undo(
     query: CallbackQuery, callback_data: UndoCallback, user: User, transactions: TransactionService
 ) -> None:
     removed = await transactions.undo(user, UUID(callback_data.transaction_id))
+    if removed == 0:
+        await query.answer(ALREADY_UNDONE)
+        return
+    await query.answer()
+    if isinstance(query.message, Message):
+        await query.message.edit_text(f"{query.message.text}\n\n{UNDONE}", reply_markup=None)
+
+
+@router.callback_query(UndoExchangeCallback.filter())
+async def undo_exchange(
+    query: CallbackQuery,
+    callback_data: UndoExchangeCallback,
+    user: User,
+    transactions: TransactionService,
+) -> None:
+    removed = await transactions.undo_exchange(user, UUID(callback_data.exchange_id))
     if removed == 0:
         await query.answer(ALREADY_UNDONE)
         return

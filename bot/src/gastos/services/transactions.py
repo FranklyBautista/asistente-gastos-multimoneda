@@ -1,4 +1,4 @@
-"""Caso de uso: registrar gastos e ingresos escritos en lenguaje natural.
+"""Caso de uso: registrar gastos, ingresos y cambios de moneda escritos en lenguaje natural.
 
 Flujo: texto → `Extraction` del LLM → borradores. Si alguno tiene la moneda dudosa, se guarda
 como pendiente y se pregunta con botones; si no, se resuelven cuenta, categoría y snapshot de
@@ -27,11 +27,15 @@ from gastos.domain.transaction import (
     TransactionDraft,
 )
 from gastos.domain.user import User
-from gastos.extraction.parser import Categories, to_drafts
+from gastos.extraction.parser import Categories, to_drafts, to_exchange_draft
 from gastos.extraction.schema import Extraction
+from gastos.services.exchanges import ExchangeSaved, ExchangeService
+from gastos.services.outcomes import Ask, NotATransaction
 from gastos.services.rates import CurrentRate
 
 PENDING_TTL: Final = timedelta(minutes=30)
+# Tiempo en que una respuesta suelta todavía se toma como respuesta a la pregunta del bot.
+FOLLOWUP_TTL: Final = timedelta(minutes=10)
 MAX_PENDING: Final = 500  # tope de memoria; se descartan los más viejos
 
 
@@ -50,7 +54,11 @@ class TextExtractor(Protocol):
     """Lo implementa extraction.Extractor."""
 
     async def extract(
-        self, text: str, categories: Categories, now_local: datetime
+        self,
+        text: str,
+        categories: Categories,
+        now_local: datetime,
+        previous: tuple[str, str] | None = None,
     ) -> Extraction: ...
 
 
@@ -77,17 +85,16 @@ class NeedsCurrency:
     drafts: list[TransactionDraft]  # todos los del mensaje; los dudosos con `needs_currency`
 
 
+Outcome = Saved | NeedsCurrency | ExchangeSaved | Ask | NotATransaction
+
+
 @dataclass(frozen=True, slots=True)
-class Ask:
+class _Followup:
+    """La última pregunta del bot, para completar el mensaje con la próxima respuesta."""
+
+    raw_text: str
     question: str
-
-
-@dataclass(frozen=True, slots=True)
-class NotATransaction:
-    intent: Literal["log_exchange", "query", "correction", "other"]
-
-
-Outcome = Saved | NeedsCurrency | Ask | NotATransaction
+    expires_at: datetime
 
 
 @dataclass(slots=True)
@@ -129,20 +136,47 @@ class TransactionService:
         store: TransactionStore,
         extractor: TextExtractor,
         rates: UserRates,
+        exchanges: ExchangeService,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
         self._store = store
         self._extractor = extractor
         self._rates = rates
+        self._exchanges = exchanges
         self._clock = clock
         self._pending = PendingStore(clock)
+        self._followups: dict[UUID, _Followup] = {}
 
     async def register_text(self, user: User, text: str) -> Outcome:
+        """Interpreta el mensaje; si responde a la última pregunta del bot, lo junta con ella."""
+        followup = self._followups.pop(user.id, None)
+        previous = None
+        raw_text = text
+        if followup is not None and followup.expires_at > self._clock():
+            previous = (followup.raw_text, followup.question)
+            raw_text = f"{followup.raw_text} / {text}"
+        outcome = await self._interpret(user, text, previous, raw_text)
+        if isinstance(outcome, Ask):
+            self._followups[user.id] = _Followup(
+                raw_text, outcome.question, self._clock() + FOLLOWUP_TTL
+            )
+        return outcome
+
+    async def _interpret(
+        self, user: User, text: str, previous: tuple[str, str] | None, raw_text: str
+    ) -> Outcome:
         now_local = self._clock().astimezone(ZoneInfo(user.timezone))
         categories = await self._store.categories(user.id)
         names = _category_names(categories)
-        extraction = await self._extractor.extract(text, names, now_local)
+        extraction = await self._extractor.extract(text, names, now_local, previous)
 
+        # Al completar un cambio pendiente el LLM a veces lo etiqueta como corrección.
+        completes_exchange = previous is not None and extraction.exchange is not None
+        if extraction.intent == "log_exchange" or completes_exchange:
+            if extraction.exchange is None:
+                return Ask("¿Qué moneda cambiaste, cuánto y a qué tasa?")
+            draft = to_exchange_draft(extraction.exchange, now_local)
+            return await self._exchanges.register(user, draft, raw_text)
         if extraction.intent != "log_transactions":
             return NotATransaction(extraction.intent)
         if extraction.clarification and extraction.clarification.field != "currency":
@@ -152,10 +186,10 @@ class TransactionService:
             return Ask("No encontré ningún monto. ¿Cuánto fue y en qué?")
         if any(d.needs_currency for d in drafts):
             pending = _Pending(
-                user.id, drafts, text, extraction.confidence, self._clock() + PENDING_TTL
+                user.id, drafts, raw_text, extraction.confidence, self._clock() + PENDING_TTL
             )
             return NeedsCurrency(self._pending.put(pending), drafts)
-        return await self._save(user, drafts, text, extraction.confidence, categories)
+        return await self._save(user, drafts, raw_text, extraction.confidence, categories)
 
     async def choose_currency(self, user: User, token: str, currency: Currency) -> Saved | None:
         """Aplica la moneda elegida a los movimientos dudosos y guarda; None si expiró."""
@@ -168,6 +202,9 @@ class TransactionService:
 
     async def undo(self, user: User, transaction_id: UUID) -> int:
         return await self._store.undo_batch(user.id, transaction_id)
+
+    async def undo_exchange(self, user: User, exchange_id: UUID) -> int:
+        return await self._exchanges.undo(user, exchange_id)
 
     async def _save(
         self,
