@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 
 import structlog
 from aiogram import Bot, F, Router
+from aiogram.filters import Command, CommandObject
 from aiogram.types import CallbackQuery, Message
 from aiogram.utils.chat_action import ChatActionSender
 
@@ -23,9 +24,12 @@ from gastos.chat.keyboards import (
     undo_keyboard,
 )
 from gastos.domain.conversion import Rate
+from gastos.domain.correction import FIELD_LABELS, Change
+from gastos.domain.correction import KIND_LABELS as CORRECTION_KIND_LABELS
 from gastos.domain.currency import Currency, parse_currency
 from gastos.domain.transaction import SavedTransaction, TransactionDraft
 from gastos.domain.user import User
+from gastos.services.corrections import Corrected, NoChange, NothingToCorrect
 from gastos.services.exchanges import ExchangeSaved
 from gastos.services.outcomes import Ask, NotATransaction
 from gastos.services.query_tools import (
@@ -35,7 +39,7 @@ from gastos.services.query_tools import (
     TransactionsAnswer,
     UnknownCategory,
 )
-from gastos.services.transactions import NeedsCurrency, Saved, TransactionService
+from gastos.services.transactions import NeedsCurrency, Outcome, Saved, TransactionService
 
 router = Router(name="transactions")
 log = structlog.get_logger()
@@ -47,7 +51,9 @@ NOT_A_TRANSACTION: Final[dict[str, str]] = {
         "todavía no registro transferencias, así que no anoté nada."
     ),
     "query": f"No entendí bien la pregunta. {CAN_ANSWER}",
-    "correction": ("Para corregir, toca ↩️ Deshacer en la confirmación y escríbelo de nuevo."),
+    "correction": (
+        "No entendí qué corregir. Escríbelo como «eso fue transporte» o «eran 20 mil pesos»."
+    ),
     "other": (
         "No vi un gasto ni un ingreso en ese mensaje. "
         "Escríbelo como «almuerzo 15 bs» o mira /ayuda."
@@ -102,6 +108,52 @@ def confirmation_text(saved: Saved, user: User, now: datetime) -> str:
     return "\n\n".join([text, *notes])
 
 
+# ---- Correcciones (Fase 8) ----
+
+NOTHING_TO_CORRECT = "No tienes ningún movimiento anotado que corregir."
+CORRECTION_HINT = (
+    "Dime qué cambia, por ejemplo «eso fue transporte», «eran 20 mil pesos» o "
+    "«/corregir era un ingreso». Corrijo el último mensaje que anotaste."
+)
+
+
+def _change_value(change: Change, value: str) -> str:
+    match change.field:
+        case "kind":
+            return CORRECTION_KIND_LABELS["income" if value == "income" else "expense"]
+        case "currency":
+            return SYMBOLS[parse_currency(value)]
+        case "amount":
+            return _plain_amount(Decimal(value))
+        case _:
+            return value
+
+
+def change_text(change: Change) -> str:
+    """ "categoría: comida → transporte"."""
+    old = _change_value(change, change.old_value)
+    new = _change_value(change, change.new_value)
+    return f"{FIELD_LABELS[change.field]}: {old} → {new}"
+
+
+def correction_text(outcome: Corrected | NoChange, user: User, now: datetime) -> str:
+    tz = ZoneInfo(user.timezone)
+    line = _line(outcome.transaction, now.astimezone(tz), tz)
+    if isinstance(outcome, NoChange):
+        return f"Eso ya estaba así: {line}"
+    changes = "; ".join(change_text(c) for c in outcome.changes)
+    return f"✏️ Corregido: {line}\n({changes})"
+
+
+def last_movements_text(movements: list[SavedTransaction], user: User, now: datetime) -> str:
+    if not movements:
+        return NOTHING_TO_CORRECT
+    tz = ZoneInfo(user.timezone)
+    now_local = now.astimezone(tz)
+    lines = [f"• {_line(tx, now_local, tz)}" for tx in movements]
+    return "\n".join(["Tu último mensaje anotó:", *lines, "", CORRECTION_HINT])
+
+
 def _rate_text(rate: Decimal, source: Currency, target: Currency, *, invert: bool) -> str:
     """Como se cotiza en la calle: la moneda débil por 1 de la fuerte ("985,00 Bs por USDT")."""
     if invert:
@@ -153,6 +205,32 @@ async def register(
         return
     async with ChatActionSender.typing(bot=bot, chat_id=message.chat.id):
         outcome = await transactions.register_text(user, message.text or "")
+    await reply(message, outcome, user)
+
+
+@router.message(Command("corregir"))
+async def correct(
+    message: Message,
+    command: CommandObject,
+    bot: Bot,
+    user: User,
+    transactions: TransactionService,
+) -> None:
+    """`/corregir` muestra qué se corregiría; `/corregir <texto>` lo corrige."""
+    if not user.is_onboarded:
+        await message.answer(NEEDS_ONBOARDING)
+        return
+    if not command.args:
+        movements = await transactions.last_movements(user)
+        await message.answer(last_movements_text(movements, user, datetime.now(UTC)))
+        return
+    async with ChatActionSender.typing(bot=bot, chat_id=message.chat.id):
+        outcome = await transactions.correct_text(user, command.args)
+    await reply(message, outcome, user)
+
+
+async def reply(message: Message, outcome: Outcome, user: User) -> None:
+    """Convierte el resultado de un servicio en la respuesta del chat."""
     log.info("message_answered", outcome=type(outcome).__name__)
     match outcome:
         case Saved():
@@ -178,6 +256,10 @@ async def register(
                 exchange_text(outcome, user, datetime.now(UTC)),
                 reply_markup=undo_exchange_keyboard(str(outcome.exchange.id)),
             )
+        case Corrected() | NoChange():
+            await message.answer(correction_text(outcome, user, datetime.now(UTC)))
+        case NothingToCorrect():
+            await message.answer(NOTHING_TO_CORRECT)
         case Ask(question=question):
             await message.answer(question)
         case NotATransaction(intent=intent):

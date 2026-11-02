@@ -8,10 +8,16 @@ from zoneinfo import ZoneInfo
 
 import structlog
 
+from gastos.domain.correction import CorrectionDraft, CorrectionExample
 from gastos.domain.exchange import ExchangeDraft
 from gastos.domain.transaction import TransactionDraft
 from gastos.extraction.prompt import PROMPT_VERSION, system_prompt, user_prompt
-from gastos.extraction.schema import Extraction, ParsedExchange, ParsedTransaction
+from gastos.extraction.schema import (
+    Extraction,
+    ParsedCorrection,
+    ParsedExchange,
+    ParsedTransaction,
+)
 from gastos.llm.base import LLMClient
 
 log = structlog.get_logger()
@@ -33,10 +39,14 @@ class Extractor:
         categories: Categories,
         now_local: datetime,
         previous: tuple[str, str] | None = None,
+        corrections: Sequence[CorrectionExample] = (),
     ) -> Extraction:
-        """`previous` = (mensaje anterior, pregunta del bot) si `text` responde a esa pregunta."""
+        """`previous` = (mensaje anterior, pregunta del bot) si `text` responde a esa pregunta.
+
+        `corrections` son las últimas correcciones del usuario: van al prompt como ejemplos.
+        """
         extraction = await self._llm.structured(
-            system=system_prompt(categories.expense, categories.income, now_local),
+            system=system_prompt(categories.expense, categories.income, now_local, corrections),
             prompt=user_prompt(text, previous),
             schema=Extraction,
         )
@@ -46,6 +56,8 @@ class Extractor:
             intent=extraction.intent,
             transactions=len(extraction.transactions),
             exchange=extraction.exchange is not None,
+            correction=extraction.correction is not None,
+            learned_from=len(corrections),
             # Herramienta y parámetros elegidos: sin datos del usuario, solo la decisión.
             query=extraction.query.model_dump(exclude_none=True, exclude_defaults=True)
             if extraction.query
@@ -80,6 +92,17 @@ def to_drafts(
             )
         )
     return drafts
+
+
+def to_correction_draft(parsed: ParsedCorrection) -> CorrectionDraft:
+    return CorrectionDraft(
+        category=parsed.category,
+        currency=parsed.currency,
+        amount=_optional_decimal(parsed.amount),
+        kind=parsed.kind,
+        account_hint=parsed.account_hint,
+        target_hint=parsed.target_hint,
+    )
 
 
 def to_exchange_draft(parsed: ParsedExchange, now_local: datetime) -> ExchangeDraft:

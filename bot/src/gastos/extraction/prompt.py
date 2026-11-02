@@ -4,11 +4,13 @@ La versión se registra en los logs para poder comparar resultados en el set de 
 (Fase 8). El léxico de monedas sigue el ADR 0002 y debe ajustarse con el uso real.
 """
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from datetime import datetime
 from typing import Final
 
-PROMPT_VERSION: Final = "extraccion-v4"
+from gastos.domain.correction import CorrectionExample, CorrectionField
+
+PROMPT_VERSION: Final = "extraccion-v5"
 
 _RULES = """\
 Eres el extractor de un bot de finanzas personales para alguien que vive con cuatro monedas:
@@ -20,9 +22,11 @@ Intención (intent):
 - log_exchange: un cambio de una moneda a otra ("cambié 50 usdt a bs", "vendí 100 dólares",
   "compré usdt"). No es gasto ni ingreso: va en exchange y transactions va vacío.
 - query: una pregunta sobre sus finanzas ("¿cuánto gasté esta semana?"). Va en query.
-- correction: corrige un movimiento anterior ("eso fue transporte", "no, eran pesos").
+- correction: corrige el último movimiento que anotó ("eso fue transporte", "no, eran
+  pesos", "eran 20 mil", "era un ingreso"). Va en correction.
 - other: saludos o cualquier otra cosa. Con intent distinto de log_transactions,
-  transactions va vacío; exchange solo se llena con log_exchange.
+  transactions va vacío; exchange solo se llena con log_exchange y correction solo con
+  correction.
 
 Montos:
 - amount es siempre positivo; kind dice si es gasto (expense) o ingreso (income).
@@ -84,6 +88,15 @@ ni inventes cifras: el bot consulta la base de datos.
   palabra tal como la dijo ("mascotas"). Nunca la cambies por otra categoría ("otros")
   ni la dejes en null: el bot avisa que no existe.
 - in_usd true solo si pide el total en dólares o "todo junto en dólares".
+
+Correcciones (correction): llena solo lo que cambia; el resto va null.
+- category: el nombre de la lista del tipo correcto ("eso fue transporte" -> transporte).
+- currency y amount siguen las mismas reglas de arriba ("eran 20 mil pesos" -> amount 20000,
+  currency COP). "No, eran pesos" cambia solo la moneda.
+- kind solo si dice que era un gasto o un ingreso.
+- account_hint si dice la cuenta ("fue con banesco").
+- target_hint si dice cuál de los movimientos de su último mensaje corrige ("el café era en
+  bs" -> target_hint "café", currency VES).
 
 Aclaración (clarification): úsala solo si falta algo imprescindible.
 - Falta el monto ("gasté en el almuerzo"): field "amount", transactions vacío.
@@ -193,7 +206,19 @@ Ejemplos (mensaje -> JSON):
 "period":"this_year","kind":"income"}}
 
 "eso fue transporte" ->
-{"intent":"correction","confidence":0.9,"transactions":[]}
+{"intent":"correction","confidence":0.9,"transactions":[],"correction":{
+"category":"transporte"}}
+
+"no, eran 20 mil pesos" ->
+{"intent":"correction","confidence":0.9,"transactions":[],"correction":{"amount":20000,
+"currency":"COP"}}
+
+"el café era en bs" ->
+{"intent":"correction","confidence":0.85,"transactions":[],"correction":{"currency":"VES",
+"target_hint":"café"}}
+
+"me equivoqué, eso fue un ingreso" ->
+{"intent":"correction","confidence":0.85,"transactions":[],"correction":{"kind":"income"}}
 
 "gasté en el almuerzo" ->
 {"intent":"log_transactions","confidence":0.6,"transactions":[],
@@ -204,10 +229,35 @@ Ejemplos (mensaje -> JSON):
 """
 
 
+# Campo de la corrección → campo del esquema de extracción.
+_SCHEMA_FIELDS: Final[dict[CorrectionField, str]] = {
+    "category": "category",
+    "currency": "currency",
+    "amount": "amount",
+    "kind": "kind",
+    "account": "account_hint",
+}
+
+
+def corrections_section(corrections: Sequence[CorrectionExample]) -> str:
+    """Las correcciones del usuario como ejemplos: lo que el modelo debió responder."""
+    if not corrections:
+        return ""
+    lines = [
+        "Correcciones que hizo este usuario a tus interpretaciones. Cuando un mensaje se "
+        "parezca, aplica lo mismo desde el principio (con la moneda corregida, confianza 0.9):"
+    ]
+    lines += [f"- «{c.raw_text}» -> {_SCHEMA_FIELDS[c.field]}: {c.new_value}" for c in corrections]
+    return "\n".join(lines)
+
+
 def system_prompt(
-    expense_categories: Iterable[str], income_categories: Iterable[str], now_local: datetime
+    expense_categories: Iterable[str],
+    income_categories: Iterable[str],
+    now_local: datetime,
+    corrections: Sequence[CorrectionExample] = (),
 ) -> str:
-    """Reglas, categorías del usuario y fecha actual (para resolver "ayer")."""
+    """Reglas, categorías, fecha actual (para resolver "ayer") y correcciones del usuario."""
     weekday = (
         "lunes",
         "martes",
@@ -222,7 +272,9 @@ def system_prompt(
         f"Categorías de ingreso: {', '.join(income_categories)}.\n"
         f"Fecha y hora actuales del usuario: {weekday} {now_local.isoformat(timespec='minutes')}."
     )
-    return f"{_RULES}\n{context}\n\n{_EXAMPLES}"
+    prompt = f"{_RULES}\n{context}\n\n{_EXAMPLES}"
+    learned = corrections_section(corrections)
+    return f"{prompt}\n{learned}\n" if learned else prompt
 
 
 def user_prompt(text: str, previous: tuple[str, str] | None = None) -> str:

@@ -1,0 +1,96 @@
+{
+  "prompt_version": "extraccion-v5",
+  "models": [
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.8-flash"
+  ],
+  "date": "2026-11-02T00:38:42+00:00",
+  "cases": 72,
+  "llm_errors": [
+    "ves-07"
+  ],
+  "metrics": {
+    "intención": {
+      "passed": 72,
+      "total": 72
+    },
+    "cantidad de movimientos": {
+      "passed": 46,
+      "total": 48
+    },
+    "tipo": {
+      "passed": 49,
+      "total": 51
+    },
+    "monto": {
+      "passed": 49,
+      "total": 51
+    },
+    "moneda": {
+      "passed": 49,
+      "total": 51
+    },
+    "moneda clara anotada": {
+      "passed": 35,
+      "total": 35
+    },
+    "moneda dudosa preguntada": {
+      "passed": 14,
+      "total": 14
+    },
+    "categoría": {
+      "passed": 39,
+      "total": 39
+    },
+    "fecha": {
+      "passed": 1,
+      "total": 1
+    },
+    "cambio": {
+      "passed": 21,
+      "total": 22
+    },
+    "consulta": {
+      "passed": 29,
+      "total": 29
+    },
+    "corrección": {
+      "passed": 9,
+      "total": 9
+    }
+  },
+  "exact": {
+    "passed": 69,
+    "total": 72
+  },
+  "failures": [
+    {
+      "id": "ves-10",
+      "text": "pagué 200 con pago móvil",
+      "failed": [
+        "cantidad de movimientos: esperaba 1, vinieron 0",
+        "tipo: #1 no vino",
+        "monto: #1 no vino",
+        "moneda: #1 no vino"
+      ]
+    },
+    {
+      "id": "amb-07",
+      "text": "me pagaron 100",
+      "failed": [
+        "cantidad de movimientos: esperaba 1, vinieron 0",
+        "tipo: #1 no vino",
+        "monto: #1 no vino",
+        "moneda: #1 no vino"
+      ]
+    },
+    {
+      "id": "ex-06",
+      "text": "vendí 30 usdt en binance p2p a 1.010",
+      "failed": [
+        "cambio: to_currency esperaba 'VES', vino None"
+      ]
+    }
+  ]
+}

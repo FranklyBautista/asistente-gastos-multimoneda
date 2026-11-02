@@ -1,0 +1,73 @@
+{"id": "ves-01", "text": "pagué 70 bs de pasaje", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 70, "currency": "VES", "category": "transporte"}]}
+{"id": "ves-02", "text": "almuerzo 450 bolos", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 450, "currency": "VES", "category": "comida"}]}
+{"id": "ves-03", "text": "farmacia 1.250,50 bs", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 1250.5, "currency": "VES", "category": "salud"}]}
+{"id": "ves-04", "text": "recargué el teléfono 300 bolívares", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 300, "currency": "VES", "category": "servicios"}]}
+{"id": "ves-05", "text": "pago móvil de 800 por la luz", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 800, "currency": "VES", "category": "servicios"}]}
+{"id": "ves-06", "text": "cine 600 bs con la novia", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 600, "currency": "VES", "category": "ocio"}]}
+{"id": "ves-07", "text": "me pagaron 15.000 bs por un trabajo", "intent": "log_transactions", "transactions": [{"kind": "income", "amount": 15000, "currency": "VES", "category": "otros ingresos"}]}
+{"id": "ves-08", "text": "2 kilos de harina 180 bs", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 180, "currency": "VES", "category": "comida"}]}
+{"id": "ves-09", "text": "ayer pagué 30 bs de pasaje", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 30, "currency": "VES", "category": "transporte", "day_offset": -1}]}
+{"id": "ves-10", "text": "pagué 200 con pago móvil", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 200, "currency": "VES"}]}
+{"id": "cop-01", "text": "mercado 350.000 pesos por nequi", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 350000, "currency": "COP", "category": "comida"}]}
+{"id": "cop-02", "text": "taxi 18 mil pesos", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 18000, "currency": "COP", "category": "transporte"}]}
+{"id": "cop-03", "text": "almuerzo 25.000 cop", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 25000, "currency": "COP", "category": "comida"}]}
+{"id": "cop-04", "text": "pagué el internet 90 mil por bancolombia", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 90000, "currency": "COP", "category": "servicios"}]}
+{"id": "cop-05", "text": "consulta médica 120 mil pesos", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 120000, "currency": "COP", "category": "salud"}]}
+{"id": "cop-06", "text": "me transfirieron 500 mil pesos por daviplata", "intent": "log_transactions", "transactions": [{"kind": "income", "amount": 500000, "currency": "COP", "category": "otros ingresos"}]}
+{"id": "usd-01", "text": "cobré el sueldo, 450 dólares", "intent": "log_transactions", "transactions": [{"kind": "income", "amount": 450, "currency": "USD", "category": "salario"}]}
+{"id": "usd-02", "text": "cena 30 dólares", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 30, "currency": "USD", "category": "comida"}]}
+{"id": "usd-03", "text": "pagué 12 verdes de uber", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 12, "currency": "USD", "category": "transporte"}]}
+{"id": "usd-04", "text": "le mandé 100 por zelle a mi hermano", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 100, "currency": "USD"}]}
+{"id": "usd-05", "text": "spotify 5,99 usd", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 5.99, "currency": "USD"}]}
+{"id": "usd-06", "text": "me pagaron 200 dólares de un freelance", "intent": "log_transactions", "transactions": [{"kind": "income", "amount": 200, "currency": "USD"}]}
+{"id": "usd-07", "text": "transferí 50 por zelle para el alquiler", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 50, "currency": "USD"}]}
+{"id": "usdt-01", "text": "me pagaron 200 usdt", "intent": "log_transactions", "transactions": [{"kind": "income", "amount": 200, "currency": "USDT"}]}
+{"id": "usdt-02", "text": "compré en amazon 45 usdt", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 45, "currency": "USDT"}]}
+{"id": "usdt-03", "text": "pagué netflix 7,99 con binance", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 7.99, "currency": "USDT", "category": "ocio"}]}
+{"id": "usdt-04", "text": "recibí 300 tether del cliente", "intent": "log_transactions", "transactions": [{"kind": "income", "amount": 300, "currency": "USDT"}]}
+{"id": "usdt-05", "text": "gasté 20 usdt en comida", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 20, "currency": "USDT", "category": "comida"}]}
+{"id": "amb-01", "text": "gasté 15 en el almuerzo", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 15, "currency": null, "category": "comida"}]}
+{"id": "amb-02", "text": "gasté $15", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 15, "currency": null}]}
+{"id": "amb-03", "text": "taxi 20 mil", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 20000, "currency": null, "category": "transporte"}]}
+{"id": "amb-04", "text": "5 lucas de arepas", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 5000, "currency": null, "category": "comida"}]}
+{"id": "amb-05", "text": "café 3", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 3, "currency": null, "category": "comida"}]}
+{"id": "amb-06", "text": "pagué 40 de gasolina", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 40, "currency": null, "category": "transporte"}]}
+{"id": "amb-07", "text": "me pagaron 100", "intent": "log_transactions", "transactions": [{"kind": "income", "amount": 100, "currency": null}]}
+{"id": "amb-08", "text": "15k de mercado", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 15000, "currency": null, "category": "comida"}]}
+{"id": "amb-09", "text": "corte de pelo 10", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 10, "currency": null}]}
+{"id": "amb-10", "text": "medicinas 25", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 25, "currency": null, "category": "salud"}]}
+{"id": "amb-11", "text": "$50 de cena", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 50, "currency": null, "category": "comida"}]}
+{"id": "amb-12", "text": "uber 12", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 12, "currency": null, "category": "transporte"}]}
+{"id": "amb-13", "text": "el condominio 35", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 35, "currency": null, "category": "servicios"}]}
+{"id": "amb-14", "text": "gasté 1.500 en el súper", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 1500, "currency": null, "category": "comida"}]}
+{"id": "multi-01", "text": "almuerzo 15 y café 3 en dólares", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 15, "currency": "USD", "category": "comida"}, {"kind": "expense", "amount": 3, "currency": "USD", "category": "comida"}]}
+{"id": "multi-02", "text": "taxi 20 mil y almuerzo 30 mil, todo en pesos", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 20000, "currency": "COP", "category": "transporte"}, {"kind": "expense", "amount": 30000, "currency": "COP", "category": "comida"}]}
+{"id": "multi-03", "text": "farmacia 1.250 bolos y 5 lucas de arepas", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 1250, "currency": "VES", "category": "salud"}, {"kind": "expense", "amount": 5000, "currency": null, "category": "comida"}]}
+{"id": "multi-04", "text": "pagué la luz 500 bs y el agua 300 bs", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 500, "currency": "VES", "category": "servicios"}, {"kind": "expense", "amount": 300, "currency": "VES", "category": "servicios"}]}
+{"id": "multi-05", "text": "gasté 20 usdt en ropa y 5 usdt en comida", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 20, "currency": "USDT"}, {"kind": "expense", "amount": 5, "currency": "USDT", "category": "comida"}]}
+{"id": "ex-01", "text": "cambié 50 usdt a bs a 985", "intent": "log_exchange", "exchange": {"from_currency": "USDT", "to_currency": "VES", "from_amount": 50, "rate": 985}}
+{"id": "ex-02", "text": "vendí 100 dólares por 98.500 bs", "intent": "log_exchange", "exchange": {"from_currency": "USD", "to_currency": "VES", "from_amount": 100, "to_amount": 98500}}
+{"id": "ex-03", "text": "compré 20 usdt a 990", "intent": "log_exchange", "exchange": {"from_currency": null, "to_currency": "USDT", "to_amount": 20, "rate": 990}}
+{"id": "ex-04", "text": "cambié 200 mil pesos a dólares", "intent": "log_exchange", "exchange": {"from_currency": "COP", "to_currency": "USD", "from_amount": 200000}}
+{"id": "ex-05", "text": "compré 100 usdt con dólares en efectivo", "intent": "log_exchange", "exchange": {"from_currency": "USD", "to_currency": "USDT", "to_amount": 100}}
+{"id": "ex-06", "text": "vendí 30 usdt en binance p2p a 1.010", "intent": "log_exchange", "exchange": {"from_currency": "USDT", "to_currency": "VES", "from_amount": 30, "rate": 1010}}
+{"id": "q-01", "text": "¿cuánto gasté esta semana?", "intent": "query", "query": {"tool": "totals", "period": "this_week", "kind": "expense"}}
+{"id": "q-02", "text": "¿en qué se me fue la plata el mes pasado?", "intent": "query", "query": {"tool": "spending_by_category", "period": "last_month"}}
+{"id": "q-03", "text": "¿cuánto tengo?", "intent": "query", "query": {"tool": "account_balances", "in_usd": false}}
+{"id": "q-04", "text": "¿cuánto tengo en total en dólares?", "intent": "query", "query": {"tool": "account_balances", "in_usd": true}}
+{"id": "q-05", "text": "mis últimos 5 gastos en bs", "intent": "query", "query": {"tool": "list_transactions", "kind": "expense", "currency": "VES", "limit": 5}}
+{"id": "q-06", "text": "¿cuánto gasté en comida en octubre?", "intent": "query", "query": {"tool": "totals", "period": "month", "month": 10, "kind": "expense", "category": "comida"}}
+{"id": "q-07", "text": "¿cuánto me entró este año?", "intent": "query", "query": {"tool": "totals", "period": "this_year", "kind": "income"}}
+{"id": "q-08", "text": "¿cuánto gasté ayer?", "intent": "query", "query": {"tool": "totals", "period": "yesterday", "kind": "expense"}}
+{"id": "q-09", "text": "¿cuánto llevo gastado en transporte este mes?", "intent": "query", "query": {"tool": "totals", "period": "this_month", "kind": "expense", "category": "transporte"}}
+{"id": "q-10", "text": "¿qué gasté hoy?", "intent": "query", "query": {"period": "today"}}
+{"id": "fix-01", "text": "eso fue transporte", "intent": "correction", "correction": {"category": "transporte"}}
+{"id": "fix-02", "text": "no, eran pesos", "intent": "correction", "correction": {"currency": "COP", "amount": null}}
+{"id": "fix-03", "text": "eran 20 mil pesos", "intent": "correction", "correction": {"amount": 20000, "currency": "COP"}}
+{"id": "fix-04", "text": "me equivoqué, era un ingreso", "intent": "correction", "correction": {"kind": "income"}}
+{"id": "fix-05", "text": "el café era en bs", "intent": "correction", "correction": {"currency": "VES", "target_hint": "café"}}
+{"id": "fix-06", "text": "no eran 15, eran 25", "intent": "correction", "correction": {"amount": 25}}
+{"id": "other-01", "text": "hola", "intent": "other"}
+{"id": "other-02", "text": "gracias!", "intent": "other"}
+{"id": "ask-01", "text": "gasté en el almuerzo", "intent": "log_transactions", "transactions": []}
+{"id": "ask-02", "text": "pagué el almuerzo pero no recuerdo cuánto", "intent": "log_transactions", "transactions": []}

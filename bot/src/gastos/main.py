@@ -11,6 +11,7 @@ from aiogram.types import BotCommand
 from gastos.chat.dispatcher import build_dispatcher
 from gastos.config import Settings, get_settings
 from gastos.db.pool import create_pool
+from gastos.db.repositories.corrections import CorrectionRepository
 from gastos.db.repositories.exchanges import ExchangeRepository
 from gastos.db.repositories.rates import RateRepository
 from gastos.db.repositories.reports import ReportRepository
@@ -24,6 +25,7 @@ from gastos.llm.gemini import GeminiClient
 from gastos.observability.logging import configure_logging
 from gastos.rates.base import create_http_client
 from gastos.rates.sources import HttpRateSources
+from gastos.services.corrections import CorrectionService
 from gastos.services.exchanges import ExchangeService
 from gastos.services.query_tools import QueryService
 from gastos.services.rates import RateService
@@ -36,6 +38,7 @@ COMMANDS = [
     BotCommand(command="perfil", description="Ver tu configuración"),
     BotCommand(command="tasas", description="Ver las tasas de cambio vigentes"),
     BotCommand(command="resumen", description="Cómo va tu semana"),
+    BotCommand(command="corregir", description="Corregir lo último que anotaste"),
     BotCommand(command="ayuda", description="Qué puedo hacer"),
 ]
 
@@ -72,7 +75,10 @@ async def main() -> None:
     exchanges = ExchangeService(ExchangeRepository(pool), transaction_repo, rates)
     report_repo = ReportRepository(pool)
     queries = QueryService(report_repo, transaction_repo, rates)
-    transactions = TransactionService(transaction_repo, Extractor(llm), rates, exchanges, queries)
+    corrections = CorrectionService(CorrectionRepository(pool), transaction_repo, rates)
+    transactions = TransactionService(
+        transaction_repo, Extractor(llm), rates, exchanges, queries, corrections
+    )
     user_repo = UserRepository(pool)
     summaries = WeeklySummaryService(
         report_repo,

@@ -4,7 +4,7 @@ Bot de Telegram que registra gastos e ingresos escritos en lenguaje natural ("ga
 Guarda cada movimiento con la tasa del momento, responde preguntas sobre tus finanzas y envía un resumen semanal.
 Una app web (en desarrollo) muestra todo centralizado.
 
-> Estado: **Fase 7**. El bot registra gastos, ingresos y cambios entre monedas escritos como hablas, con la tasa del momento (Bs con BCV, paralelo o P2P; COP y USDT). Responde preguntas sobre tus finanzas con datos reales y cada domingo en la tarde te manda un resumen de la semana con la pérdida (o ganancia) de poder adquisitivo de tus bolívares; también lo puedes pedir con `/resumen`. Ver [`docs/STACK_Y_ARQUITECTURA.md`](docs/STACK_Y_ARQUITECTURA.md) y las decisiones en [`docs/decisions/`](docs/decisions/).
+> Estado: **Fase 7**. El bot registra gastos, ingresos y cambios entre monedas escritos como hablas, con la tasa del momento (Bs con BCV, paralelo o P2P; COP y USDT). Responde preguntas sobre tus finanzas con datos reales y cada domingo en la tarde te manda un resumen de la semana con la pérdida (o ganancia) de poder adquisitivo de tus bolívares; también lo puedes pedir con `/resumen`. Si se equivoca, lo corriges escribiendo («eso fue transporte», «eran 20 mil pesos») y lo tiene en cuenta en los mensajes siguientes. Ver [`docs/STACK_Y_ARQUITECTURA.md`](docs/STACK_Y_ARQUITECTURA.md) y las decisiones en [`docs/decisions/`](docs/decisions/).
 
 ## Arquitectura
 
@@ -35,6 +35,8 @@ Copy-Item bot\.env.example bot\.env   # rellena los valores
 .\tasks.ps1 check                     # lint, tipos, capas, pruebas y pgTAP
 .\tasks.ps1 run                       # arranca el bot en modo polling
 ```
+
+Para medir la extracción con el LLM real, `.\tasks.ps1 eval` corre las frases de [`bot/eval/dataset.jsonl`](bot/eval/dataset.jsonl) y guarda el resultado en [`bot/eval/results/`](bot/eval/results/). Consume cuota de Gemini, por eso no corre en el CI.
 
 Supabase local usa los puertos 553xx (base de datos en `127.0.0.1:55322`) para convivir con otros proyectos que usen los puertos por defecto.
 

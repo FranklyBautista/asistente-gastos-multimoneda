@@ -10,6 +10,12 @@ from pydantic import BaseModel
 
 from gastos.domain.account import Account, Category
 from gastos.domain.conversion import Rate
+from gastos.domain.correction import (
+    Change,
+    CorrectedValues,
+    CorrectionExample,
+    StoredTransaction,
+)
 from gastos.domain.currency import Currency, QuotedCurrency, RateSource, VesRateSource
 from gastos.domain.exchange import NewExchange, SavedExchange
 from gastos.domain.reports import AccountBalance, CategoryTotal, CurrencyTotal, TransactionRow
@@ -202,6 +208,7 @@ class FakeExtractor:
     def __init__(self, *results: Extraction) -> None:
         self.results = list(results)
         self.calls: list[tuple[str, tuple[str, str] | None]] = []
+        self.examples: list[list[CorrectionExample]] = []
 
     async def extract(
         self,
@@ -209,8 +216,10 @@ class FakeExtractor:
         categories: Categories,
         now_local: datetime,
         previous: tuple[str, str] | None = None,
+        corrections: Sequence[CorrectionExample] = (),
     ) -> Extraction:
         self.calls.append((text, previous))
+        self.examples.append(list(corrections))
         return self.results.pop(0) if len(self.results) > 1 else self.results[0]
 
 
@@ -361,3 +370,39 @@ class FakeRecipients:
 
     async def onboarded(self) -> list[User]:
         return [u for u in self.users if u.is_onboarded]
+
+
+# ---- Correcciones (Fase 8) ----
+
+
+class FakeCorrectionStore:
+    """Implementa services.corrections.CorrectionStore en memoria."""
+
+    def __init__(
+        self,
+        batch: list[StoredTransaction] | None = None,
+        examples: list[CorrectionExample] | None = None,
+    ) -> None:
+        self.batch = batch or []
+        self.examples = examples or []
+        self.applied: list[tuple[UUID, CorrectedValues, list[Change], str]] = []
+        self.gone = False  # simula que el movimiento se deshizo entre la lectura y el cambio
+
+    async def last_batch(self, user_id: UUID) -> list[StoredTransaction]:
+        return self.batch
+
+    async def apply(
+        self,
+        user_id: UUID,
+        transaction_id: UUID,
+        values: CorrectedValues,
+        changes: list[Change],
+        raw_text: str,
+    ) -> bool:
+        if self.gone:
+            return False
+        self.applied.append((transaction_id, values, list(changes), raw_text))
+        return True
+
+    async def recent_examples(self, user_id: UUID, limit: int) -> list[CorrectionExample]:
+        return self.examples[:limit]
