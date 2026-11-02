@@ -34,6 +34,9 @@ class RateStore(Protocol):
 
     async def save(self, rates: Sequence[Rate]) -> None: ...
     async def latest(self, currency: QuotedCurrency, source: RateSource) -> Rate | None: ...
+    async def at(
+        self, currency: QuotedCurrency, source: RateSource, moment: datetime
+    ) -> Rate | None: ...
 
 
 class RateSources(Protocol):
@@ -100,6 +103,13 @@ class RateService:
     async def for_user(self, user: User, currency: QuotedCurrency) -> CurrentRate:
         """La tasa que corresponde al usuario: la del bolívar sale de su preferencia."""
         return await self.current(currency, rate_source_for(currency, user.ves_rate_source))
+
+    async def for_user_at(
+        self, user: User, currency: QuotedCurrency, moment: datetime
+    ) -> Rate | None:
+        """La tasa del usuario vigente en `moment` (la primera posterior si no hay anterior)."""
+        source = rate_source_for(currency, user.ves_rate_source)
+        return await self._store.at(currency, source, moment)
 
     async def board(self) -> list[tuple[QuotedCurrency, RateSource, CurrentRate | None]]:
         """Todas las tasas, con None en las que todavía no se han podido obtener."""

@@ -46,3 +46,27 @@ class RateRepository:
             )
             row = await cur.fetchone()
         return _to_rate(row) if row else None
+
+    async def at(
+        self, currency: QuotedCurrency, source: RateSource, moment: datetime
+    ) -> Rate | None:
+        """La tasa vigente en `moment`: la última guardada hasta entonces.
+
+        Si no hay ninguna anterior (el historial empezó después), la primera posterior.
+        Las dos ramas usan el índice (currency, source, fetched_at desc).
+        """
+        async with self._pool.connection() as conn:
+            cur = await conn.execute(
+                "select currency, source, usd_per_unit, fetched_at from ("
+                "  (select currency, source, usd_per_unit, fetched_at, 0 as pref"
+                "   from exchange_rates where currency = %s and source = %s and fetched_at <= %s"
+                "   order by fetched_at desc limit 1)"
+                "  union all"
+                "  (select currency, source, usd_per_unit, fetched_at, 1 as pref"
+                "   from exchange_rates where currency = %s and source = %s and fetched_at > %s"
+                "   order by fetched_at limit 1)"
+                ") r order by pref limit 1",
+                (currency, source, moment, currency, source, moment),
+            )
+            row = await cur.fetchone()
+        return _to_rate(row) if row else None

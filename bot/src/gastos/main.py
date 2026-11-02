@@ -14,8 +14,10 @@ from gastos.db.pool import create_pool
 from gastos.db.repositories.exchanges import ExchangeRepository
 from gastos.db.repositories.rates import RateRepository
 from gastos.db.repositories.reports import ReportRepository
+from gastos.db.repositories.summaries import SummaryRepository
 from gastos.db.repositories.transactions import TransactionRepository
 from gastos.db.repositories.users import UserRepository
+from gastos.domain.user import User
 from gastos.extraction.parser import Extractor
 from gastos.jobs.scheduler import build_scheduler
 from gastos.llm.gemini import GeminiClient
@@ -27,11 +29,13 @@ from gastos.services.query_tools import QueryService
 from gastos.services.rates import RateService
 from gastos.services.transactions import TransactionService
 from gastos.services.users import UserService
+from gastos.services.weekly_summary import WeeklySummaryService
 
 COMMANDS = [
     BotCommand(command="start", description="Configurar moneda, tasa de Bs y zona horaria"),
     BotCommand(command="perfil", description="Ver tu configuración"),
     BotCommand(command="tasas", description="Ver las tasas de cambio vigentes"),
+    BotCommand(command="resumen", description="Cómo va tu semana"),
     BotCommand(command="ayuda", description="Qué puedo hacer"),
 ]
 
@@ -66,12 +70,27 @@ async def main() -> None:
     )
     transaction_repo = TransactionRepository(pool)
     exchanges = ExchangeService(ExchangeRepository(pool), transaction_repo, rates)
-    queries = QueryService(ReportRepository(pool), transaction_repo, rates)
+    report_repo = ReportRepository(pool)
+    queries = QueryService(report_repo, transaction_repo, rates)
     transactions = TransactionService(transaction_repo, Extractor(llm), rates, exchanges, queries)
-    dp = build_dispatcher(
-        settings.allowed_telegram_ids, UserService(UserRepository(pool)), rates, transactions
+    user_repo = UserRepository(pool)
+    summaries = WeeklySummaryService(
+        report_repo,
+        rates,
+        llm,
+        SummaryRepository(pool),
+        user_repo,
+        send_hour=settings.weekly_summary_hour,
     )
-    scheduler = build_scheduler(rates, settings.rates_refresh_minutes)
+    dp = build_dispatcher(
+        settings.allowed_telegram_ids, UserService(user_repo), rates, transactions, summaries
+    )
+
+    async def send_summary(user: User, text: str) -> None:
+        # En un chat privado, el id del chat es el id de Telegram del usuario.
+        await bot.send_message(user.telegram_id, text)
+
+    scheduler = build_scheduler(rates, settings.rates_refresh_minutes, summaries, send_summary)
     try:
         scheduler.start()
         await bot.set_my_commands(COMMANDS)

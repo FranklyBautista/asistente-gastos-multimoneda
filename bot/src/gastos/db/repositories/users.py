@@ -40,6 +40,16 @@ class UserRepository:
             row = await cur.fetchone()
         return _to_user(row) if row else None
 
+    async def onboarded(self) -> list[User]:
+        """Todos los usuarios que terminaron /start (a quienes se les manda el resumen)."""
+        query = sql.SQL(
+            "select {} from users where onboarded_at is not null order by created_at"
+        ).format(_COLUMNS)
+        async with self._pool.connection() as conn:
+            cur = await conn.execute(query)
+            rows = await cur.fetchall()
+        return [_to_user(r) for r in rows]
+
     async def create(self, telegram_id: int, display_name: str | None) -> User:
         """Crea el usuario (el trigger le crea sus cuentas); si ya existe, lo devuelve."""
         query = sql.SQL(

@@ -60,3 +60,11 @@ async def test_onboarding_guarda_preferencias(repo: UserRepository) -> None:
     # Repetir el onboarding conserva la primera fecha.
     redo = await repo.complete_onboarding(user.id, "America/Caracas")
     assert redo.onboarded_at == done.onboarded_at
+
+
+async def test_lista_solo_a_quienes_terminaron_el_onboarding(repo: UserRepository) -> None:
+    done = await repo.complete_onboarding((await repo.create(_telegram_id(), None)).id, "UTC")
+    pending = await repo.create(_telegram_id(), None)
+    ids = {u.id for u in await repo.onboarded()}
+    assert done.id in ids
+    assert pending.id not in ids

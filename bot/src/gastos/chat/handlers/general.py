@@ -14,6 +14,7 @@ HELP = (
     "/start · configurar moneda por defecto, tasa de Bs y zona horaria\n"
     "/perfil · ver tu configuración\n"
     "/tasas · ver las tasas de cambio vigentes\n"
+    "/resumen · cómo va tu semana (también te lo mando el domingo en la tarde)\n"
     "/ayuda · ver esta ayuda\n\n"
     "Para anotar, escribe como hablas: «almuerzo 15 bs», «taxi 20 mil y café 3 dólares» "
     "o «me pagaron 200 usdt». Si no queda clara la moneda, te pregunto con botones.\n\n"

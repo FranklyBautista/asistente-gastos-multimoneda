@@ -55,3 +55,26 @@ async def test_la_base_rechaza_una_tasa_que_no_es_positiva(repo: RateRepository)
     object.__setattr__(rate, "usd_per_unit", Decimal(0))  # salta la validación del dominio
     with pytest.raises(psycopg.errors.CheckViolation):
         await repo.save([rate])
+
+
+async def test_tasa_vigente_en_un_momento(repo: RateRepository) -> None:
+    first = Rate("COP", "fx", Decimal("0.0002500000"), FUTURE)
+    second = Rate("COP", "fx", Decimal("0.0002600000"), FUTURE + timedelta(hours=2))
+    await repo.save([first, second])
+    assert await repo.at("COP", "fx", FUTURE + timedelta(hours=1)) == first
+    assert await repo.at("COP", "fx", FUTURE + timedelta(hours=2)) == second
+    assert await repo.at("COP", "fx", FUTURE + timedelta(days=9)) == second
+
+
+async def test_sin_tasa_anterior_usa_la_primera_posterior(repo: RateRepository) -> None:
+    await repo.save([Rate("COP", "fx", Decimal("0.0002500000"), FUTURE)])
+    # La BD local puede tener tasas reales; la primera posterior a 1990 es la más vieja guardada.
+    found = await repo.at("COP", "fx", datetime(1990, 1, 1, tzinfo=UTC))
+    assert found is not None
+    pool = repo._pool  # pyright: ignore[reportPrivateUsage]
+    async with pool.connection() as conn:
+        cur = await conn.execute(
+            "select min(fetched_at) from exchange_rates where currency = 'COP' and source = 'fx'"
+        )
+        row = await cur.fetchone()
+    assert row is not None and found.fetched_at == row[0]

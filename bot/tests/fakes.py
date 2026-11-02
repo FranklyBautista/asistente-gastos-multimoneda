@@ -2,7 +2,7 @@
 
 from collections.abc import Sequence
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -75,6 +75,15 @@ class FakeRateStore:
     async def latest(self, currency: QuotedCurrency, source: RateSource) -> Rate | None:
         matching = [r for r in self.rows if (r.currency, r.source) == (currency, source)]
         return max(matching, key=lambda r: r.fetched_at, default=None)
+
+    async def at(
+        self, currency: QuotedCurrency, source: RateSource, moment: datetime
+    ) -> Rate | None:
+        matching = [r for r in self.rows if (r.currency, r.source) == (currency, source)]
+        before = [r for r in matching if r.fetched_at <= moment]
+        if before:
+            return max(before, key=lambda r: r.fetched_at)
+        return min(matching, key=lambda r: r.fetched_at, default=None)
 
 
 class FakeRateSources:
@@ -321,3 +330,34 @@ class FakeReportStore:
             )
         )
         return self.transactions
+
+
+# ---- Resumen semanal (Fase 7) ----
+
+
+class FakeSentSummaries:
+    """Implementa services.weekly_summary.SentSummaries en memoria."""
+
+    def __init__(self) -> None:
+        self.claimed: set[tuple[UUID, date]] = set()
+        self.released: list[tuple[UUID, date]] = []
+
+    async def claim(self, user_id: UUID, week_start: date) -> bool:
+        if (user_id, week_start) in self.claimed:
+            return False
+        self.claimed.add((user_id, week_start))
+        return True
+
+    async def release(self, user_id: UUID, week_start: date) -> None:
+        self.claimed.discard((user_id, week_start))
+        self.released.append((user_id, week_start))
+
+
+class FakeRecipients:
+    """Implementa services.weekly_summary.Recipients."""
+
+    def __init__(self, *users: User) -> None:
+        self.users = list(users)
+
+    async def onboarded(self) -> list[User]:
+        return [u for u in self.users if u.is_onboarded]
