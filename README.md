@@ -4,7 +4,7 @@ Bot de Telegram que registra gastos e ingresos escritos en lenguaje natural ("ga
 Guarda cada movimiento con la tasa del momento, responde preguntas sobre tus finanzas y envía un resumen semanal.
 Una app web (en desarrollo) muestra todo centralizado.
 
-> Estado: **Fase 3**, el bot hace el onboarding con `/start`, refresca cada hora las tasas de Bs (BCV, paralelo y P2P), COP y USDT y las muestra con `/tasas`. Ver [`docs/STACK_Y_ARQUITECTURA.md`](docs/STACK_Y_ARQUITECTURA.md) y las fuentes en el [ADR 0004](docs/decisions/0004-fuentes-de-tasas.md).
+> Estado: **Fase 7**. El bot registra gastos, ingresos y cambios entre monedas escritos como hablas, con la tasa del momento (Bs con BCV, paralelo o P2P; COP y USDT). Responde preguntas sobre tus finanzas con datos reales y cada domingo en la tarde te manda un resumen de la semana con la pérdida (o ganancia) de poder adquisitivo de tus bolívares; también lo puedes pedir con `/resumen`. Ver [`docs/STACK_Y_ARQUITECTURA.md`](docs/STACK_Y_ARQUITECTURA.md) y las decisiones en [`docs/decisions/`](docs/decisions/).
 
 ## Arquitectura
 

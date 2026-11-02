@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     rates_api_key: str | None = None
     rates_refresh_minutes: int = Field(default=60, ge=5)
     rates_max_age_hours: int = Field(default=6, ge=1)
+    # Hora local (0–23) desde la que se envía el resumen del domingo (Fase 7).
+    weekly_summary_hour: int = Field(default=18, ge=0, le=23)
     webhook_url: str | None = None
     webhook_secret: str | None = None
 

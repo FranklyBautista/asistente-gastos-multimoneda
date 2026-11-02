@@ -1,19 +1,45 @@
 from datetime import timedelta
 
+from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
+from gastos.domain.user import User
 from gastos.jobs.scheduler import build_scheduler
 from gastos.services.rates import RateService
-from tests.fakes import FakeRateStore
+from gastos.services.weekly_summary import WeeklySummaryService
+from tests.fakes import FakeLLM, FakeRateStore, FakeRecipients, FakeReportStore, FakeSentSummaries
 from tests.unit.test_rate_service import sources
 
 
-def test_refresca_las_tasas_cada_intervalo_y_al_arrancar() -> None:
+async def send(user: User, text: str) -> None:
+    pass
+
+
+def build() -> tuple[RateService, WeeklySummaryService]:
     rates = RateService(FakeRateStore(), sources(), timedelta(hours=6))
-    scheduler = build_scheduler(rates, refresh_minutes=60)
+    summaries = WeeklySummaryService(
+        FakeReportStore(), rates, FakeLLM(), FakeSentSummaries(), FakeRecipients()
+    )
+    return rates, summaries
+
+
+def test_refresca_las_tasas_cada_intervalo_y_al_arrancar() -> None:
+    rates, summaries = build()
+    scheduler = build_scheduler(rates, 60, summaries, send)
     job = scheduler.get_job("refresh_rates")
     assert job is not None
     assert job.func == rates.refresh
     assert isinstance(job.trigger, IntervalTrigger)
     assert job.trigger.interval == timedelta(minutes=60)
     assert job.next_run_time is not None  # corre en cuanto arranca el bot
+
+
+def test_revisa_cada_15_minutos_a_quien_le_toca_el_resumen() -> None:
+    rates, summaries = build()
+    scheduler = build_scheduler(rates, 60, summaries, send)
+    job = scheduler.get_job("weekly_summaries")
+    assert job is not None
+    assert job.func == summaries.send_due
+    assert job.args == (send,)
+    assert isinstance(job.trigger, CronTrigger)
+    assert str(job.trigger.fields[6]) == "*/15"  # minuto
