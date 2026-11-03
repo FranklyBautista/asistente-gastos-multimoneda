@@ -7,7 +7,7 @@
 #>
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('help', 'setup', 'hooks', 'run', 'check', 'test', 'test-int', 'db-up', 'db-down', 'db-reset', 'db-test')]
+    [ValidateSet('help', 'setup', 'hooks', 'run', 'check', 'test', 'test-int', 'eval', 'db-up', 'db-down', 'db-reset', 'db-test')]
     [string]$Task = 'help'
 )
 
@@ -51,6 +51,7 @@ switch ($Task) {
     'run'      { Invoke-Step $Bot 'uv' @('run', 'python', '-m', 'gastos.main') }
     'test'     { Invoke-Step $Bot 'uv' @('run', 'pytest', 'tests/unit', '-q') }
     'test-int' { Invoke-Step $Bot 'uv' @('run', 'pytest', 'tests/integration', '-q') }
+    'eval'     { Invoke-Step $Bot 'uv' @('run', 'python', 'eval/run_eval.py') }
     'db-up'    { Invoke-Step $Root 'supabase' @('start') }
     'db-down'  { Invoke-Step $Root 'supabase' @('stop') }
     'db-reset' { Invoke-Step $Root 'supabase' @('db', 'reset') }
@@ -68,6 +69,7 @@ switch ($Task) {
         Write-Host '  check     lint, formato, tipos, capas, pruebas (unit + integracion) y pgTAP'
         Write-Host '  test      solo las pruebas unitarias del bot'
         Write-Host '  test-int  pruebas de integracion contra Supabase local'
+        Write-Host '  eval      mide la extraccion con Gemini real (bot\eval, consume cuota)'
         Write-Host '  db-up     levanta Supabase local (requiere Docker Desktop)'
         Write-Host '  db-down   detiene Supabase local'
         Write-Host '  db-reset  reaplica migraciones y seed'

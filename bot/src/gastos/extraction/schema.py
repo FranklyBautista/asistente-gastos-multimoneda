@@ -82,6 +82,21 @@ class ParsedQuery(LLMOutput):
     )
 
 
+class ParsedCorrection(LLMOutput):
+    """Lo que cambia del último movimiento ("eso fue transporte", "eran 20 mil pesos")."""
+
+    category: str | None = Field(default=None, description="Nueva categoría, si la dice")
+    currency: Currency | None = Field(default=None, description="Nueva moneda, si la dice")
+    amount: float | None = Field(default=None, gt=0, description="Nuevo monto, si lo dice")
+    kind: Literal["expense", "income"] | None = Field(
+        default=None, description="Solo si dice que era gasto o ingreso"
+    )
+    account_hint: str | None = Field(default=None, description="Nueva cuenta, si la dice")
+    target_hint: str | None = Field(
+        default=None, description='Qué movimiento corrige, si lo dice ("el café")'
+    )
+
+
 class Clarification(LLMOutput):
     field: Literal["currency", "amount", "account", "kind"]
     question: str = Field(description="En español, una línea")
@@ -95,6 +110,9 @@ class Extraction(LLMOutput):
     query: ParsedQuery | None = Field(default=None, description="Solo con intent query")
     exchange: ParsedExchange | None = Field(
         default=None, description="Solo con intent log_exchange"
+    )
+    correction: ParsedCorrection | None = Field(
+        default=None, description="Solo con intent correction"
     )
     clarification: Clarification | None = None
     confidence: float = Field(ge=0, le=1)

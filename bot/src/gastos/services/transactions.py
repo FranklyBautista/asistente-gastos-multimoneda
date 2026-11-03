@@ -18,6 +18,7 @@ from zoneinfo import ZoneInfo
 
 from gastos.domain.account import Account, Category, pick_account
 from gastos.domain.conversion import Rate, to_usd
+from gastos.domain.correction import CorrectionExample
 from gastos.domain.currency import Currency
 from gastos.domain.errors import AccountNotFound
 from gastos.domain.transaction import (
@@ -27,8 +28,14 @@ from gastos.domain.transaction import (
     TransactionDraft,
 )
 from gastos.domain.user import User
-from gastos.extraction.parser import Categories, to_drafts, to_exchange_draft
+from gastos.extraction.parser import (
+    Categories,
+    to_correction_draft,
+    to_drafts,
+    to_exchange_draft,
+)
 from gastos.extraction.schema import Extraction
+from gastos.services.corrections import CorrectionOutcome, CorrectionService
 from gastos.services.exchanges import ExchangeSaved, ExchangeService
 from gastos.services.outcomes import Ask, NotATransaction
 from gastos.services.query_tools import QueryAnswer, QueryService
@@ -60,6 +67,7 @@ class TextExtractor(Protocol):
         categories: Categories,
         now_local: datetime,
         previous: tuple[str, str] | None = None,
+        corrections: Sequence[CorrectionExample] = (),
     ) -> Extraction: ...
 
 
@@ -86,7 +94,9 @@ class NeedsCurrency:
     drafts: list[TransactionDraft]  # todos los del mensaje; los dudosos con `needs_currency`
 
 
-Outcome = Saved | NeedsCurrency | ExchangeSaved | QueryAnswer | Ask | NotATransaction
+Outcome = (
+    Saved | NeedsCurrency | ExchangeSaved | QueryAnswer | CorrectionOutcome | Ask | NotATransaction
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,6 +149,7 @@ class TransactionService:
         rates: UserRates,
         exchanges: ExchangeService,
         queries: QueryService,
+        corrections: CorrectionService,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
         self._store = store
@@ -146,9 +157,23 @@ class TransactionService:
         self._rates = rates
         self._exchanges = exchanges
         self._queries = queries
+        self._corrections = corrections
         self._clock = clock
         self._pending = PendingStore(clock)
         self._followups: dict[UUID, _Followup] = {}
+
+    async def correct_text(self, user: User, text: str) -> Outcome:
+        """`/corregir <texto>`: el texto se interpreta sabiendo que es una corrección."""
+        self._followups.pop(user.id, None)
+        outcome = await self._interpret(user, f"Corrige el último movimiento: {text}", None, text)
+        if isinstance(outcome, Ask):
+            self._followups[user.id] = _Followup(
+                text, outcome.question, self._clock() + FOLLOWUP_TTL
+            )
+        return outcome
+
+    async def last_movements(self, user: User) -> list[SavedTransaction]:
+        return await self._corrections.last(user)
 
     async def register_text(self, user: User, text: str) -> Outcome:
         """Interpreta el mensaje; si responde a la última pregunta del bot, lo junta con ella."""
@@ -171,7 +196,8 @@ class TransactionService:
         now_local = self._clock().astimezone(ZoneInfo(user.timezone))
         categories = await self._store.categories(user.id)
         names = _category_names(categories)
-        extraction = await self._extractor.extract(text, names, now_local, previous)
+        examples = await self._corrections.examples(user)
+        extraction = await self._extractor.extract(text, names, now_local, previous, examples)
 
         # Al completar un cambio pendiente el LLM a veces lo etiqueta como corrección.
         completes_exchange = previous is not None and extraction.exchange is not None
@@ -182,6 +208,9 @@ class TransactionService:
             return await self._exchanges.register(user, draft, raw_text)
         if extraction.intent == "query" and extraction.query is not None:
             return await self._queries.answer(user, extraction.query, now_local)
+        if extraction.intent == "correction" and extraction.correction is not None:
+            draft = to_correction_draft(extraction.correction)
+            return await self._corrections.correct(user, draft, raw_text)
         if extraction.intent != "log_transactions":
             return NotATransaction(extraction.intent)
         if extraction.clarification and extraction.clarification.field != "currency":

@@ -10,12 +10,14 @@ from gastos.domain.conversion import Rate
 from gastos.domain.currency import QuotedCurrency, RateSource
 from gastos.domain.errors import AccountNotFound
 from gastos.extraction.schema import Extraction
+from gastos.services.corrections import CorrectionService
 from gastos.services.exchanges import ExchangeSaved, ExchangeService
 from gastos.services.outcomes import Ask, NotATransaction
 from gastos.services.query_tools import QueryService
 from gastos.services.rates import RateService
 from gastos.services.transactions import Saved, TransactionService
 from tests.fakes import (
+    FakeCorrectionStore,
     FakeExchangeStore,
     FakeExtractor,
     FakeRateSources,
@@ -65,6 +67,7 @@ class Setup:
             rate_service,
             ExchangeService(self.exchanges, self.store, rate_service),
             QueryService(FakeReportStore(), self.store, rate_service),
+            CorrectionService(FakeCorrectionStore(), self.store, rate_service),
             clock=lambda: self.clock[0],
         )
 
