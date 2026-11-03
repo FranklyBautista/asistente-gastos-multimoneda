@@ -6,7 +6,12 @@ from aiogram import Dispatcher
 
 from gastos.chat.errors import on_error
 from gastos.chat.handlers import general, onboarding, rates, summary, transactions
-from gastos.chat.middlewares import AllowlistMiddleware, LogContextMiddleware, UserMiddleware
+from gastos.chat.middlewares import (
+    AllowlistMiddleware,
+    LogContextMiddleware,
+    RateLimitMiddleware,
+    UserMiddleware,
+)
 from gastos.services.rates import RateService
 from gastos.services.transactions import TransactionService
 from gastos.services.users import UserService
@@ -19,6 +24,8 @@ def build_dispatcher(
     rate_service: RateService,
     transaction_service: TransactionService,
     summary_service: WeeklySummaryService,
+    *,
+    messages_per_minute: int,
 ) -> Dispatcher:
     # `users`, `rates`, `transactions` y `summaries` llegan a los handlers como argumentos.
     dp = Dispatcher(
@@ -31,6 +38,8 @@ def build_dispatcher(
     dp.update.outer_middleware(LogContextMiddleware())
     dp.update.outer_middleware(AllowlistMiddleware(allowed_ids))
     dp.update.outer_middleware(UserMiddleware(users))
+    # Solo los mensajes cuentan para el límite: los botones no llaman al LLM.
+    dp.message.outer_middleware(RateLimitMiddleware(messages_per_minute))
     dp.errors.register(on_error)
     # transactions toma el texto libre; general va último: tiene el comodín.
     dp.include_routers(

@@ -16,3 +16,13 @@ def create_pool(database_url: str) -> AsyncConnectionPool:
         max_size=5,
         kwargs={"prepare_threshold": None},
     )
+
+
+async def ping(pool: AsyncConnectionPool, wait_seconds: float = 5) -> bool:
+    """`True` si la base de datos responde; lo usa el healthcheck del despliegue."""
+    try:
+        async with pool.connection(timeout=wait_seconds) as conn:
+            await conn.execute("select 1")
+    except Exception:
+        return False
+    return True

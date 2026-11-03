@@ -1,16 +1,18 @@
-"""Arranque del bot: polling en local (el webhook llega con el despliegue, Fase 8)."""
+"""Arranque del bot: polling en local y webhook en producción (si hay WEBHOOK_URL)."""
 
 import asyncio
 import sys
+from collections.abc import Awaitable, Callable
 from datetime import timedelta
 
 import structlog
-from aiogram import Bot
+from aiogram import Bot, Dispatcher
 from aiogram.types import BotCommand
 
 from gastos.chat.dispatcher import build_dispatcher
+from gastos.chat.webhook import WEBHOOK_PATH, BackgroundUpdates, build_server, build_webhook_app
 from gastos.config import Settings, get_settings
-from gastos.db.pool import create_pool
+from gastos.db.pool import create_pool, ping
 from gastos.db.repositories.corrections import CorrectionRepository
 from gastos.db.repositories.exchanges import ExchangeRepository
 from gastos.db.repositories.rates import RateRepository
@@ -56,6 +58,33 @@ def build_llm(settings: Settings) -> GeminiClient:
     )
 
 
+async def poll(bot: Bot, dp: Dispatcher) -> None:
+    """Modo local. Falla si el token tiene un webhook activo, en vez de quitárselo a producción."""
+    info = await bot.get_webhook_info()
+    if info.url:
+        raise SystemExit(
+            "Este bot tiene un webhook activo (está desplegado), así que no puede usar polling. "
+            "Usa otro bot de @BotFather para desarrollo (ver docs/DESPLIEGUE.md)."
+        )
+    await dp.start_polling(bot)
+
+
+async def serve_webhook(
+    settings: Settings, bot: Bot, dp: Dispatcher, health: Callable[[], Awaitable[bool]]
+) -> None:
+    """Modo producción: registra el webhook en Telegram y sirve HTTP hasta recibir SIGTERM."""
+    assert settings.webhook_url and settings.webhook_secret  # lo garantiza Settings
+    updates = BackgroundUpdates(bot, dp)
+    app = build_webhook_app(updates, bot, secret=settings.webhook_secret, health=health)
+    # No se borra al apagar: en un redespliegue la instancia nueva ya lo usa.
+    await bot.set_webhook(
+        f"{settings.webhook_url}{WEBHOOK_PATH}",
+        secret_token=settings.webhook_secret,
+        allowed_updates=dp.resolve_used_update_types(),
+    )
+    await build_server(app, settings.port).serve()
+
+
 async def main() -> None:
     settings = get_settings()
     configure_logging(settings.env)
@@ -89,19 +118,36 @@ async def main() -> None:
         send_hour=settings.weekly_summary_hour,
     )
     dp = build_dispatcher(
-        settings.allowed_telegram_ids, UserService(user_repo), rates, transactions, summaries
+        settings.allowed_telegram_ids,
+        UserService(user_repo),
+        rates,
+        transactions,
+        summaries,
+        messages_per_minute=settings.rate_limit_per_minute,
     )
 
     async def send_summary(user: User, text: str) -> None:
         # En un chat privado, el id del chat es el id de Telegram del usuario.
         await bot.send_message(user.telegram_id, text)
 
+    async def database_ok() -> bool:
+        return await ping(pool)
+
     scheduler = build_scheduler(rates, settings.rates_refresh_minutes, summaries, send_summary)
     try:
         scheduler.start()
         await bot.set_my_commands(COMMANDS)
-        log.info("bot_started", env=settings.env, allowed_users=len(settings.allowed_telegram_ids))
-        await dp.start_polling(bot)
+        mode = "webhook" if settings.use_webhook else "polling"
+        log.info(
+            "bot_started",
+            env=settings.env,
+            mode=mode,
+            allowed_users=len(settings.allowed_telegram_ids),
+        )
+        if settings.use_webhook:
+            await serve_webhook(settings, bot, dp, database_ok)
+        else:
+            await poll(bot, dp)
     finally:
         if scheduler.running:
             scheduler.shutdown(wait=False)

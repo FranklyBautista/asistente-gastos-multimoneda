@@ -4,7 +4,7 @@ Bot de Telegram que registra gastos e ingresos escritos en lenguaje natural ("ga
 Guarda cada movimiento con la tasa del momento, responde preguntas sobre tus finanzas y envía un resumen semanal.
 Una app web (en desarrollo) muestra todo centralizado.
 
-> Estado: **Fase 7**. El bot registra gastos, ingresos y cambios entre monedas escritos como hablas, con la tasa del momento (Bs con BCV, paralelo o P2P; COP y USDT). Responde preguntas sobre tus finanzas con datos reales y cada domingo en la tarde te manda un resumen de la semana con la pérdida (o ganancia) de poder adquisitivo de tus bolívares; también lo puedes pedir con `/resumen`. Si se equivoca, lo corriges escribiendo («eso fue transporte», «eran 20 mil pesos») y lo tiene en cuenta en los mensajes siguientes. Ver [`docs/STACK_Y_ARQUITECTURA.md`](docs/STACK_Y_ARQUITECTURA.md) y las decisiones en [`docs/decisions/`](docs/decisions/).
+> Estado: **Fase 8**. El bot registra gastos, ingresos y cambios entre monedas escritos como hablas, con la tasa del momento (Bs con BCV, paralelo o P2P; COP y USDT). Responde preguntas sobre tus finanzas con datos reales y cada domingo en la tarde te manda un resumen de la semana con la pérdida (o ganancia) de poder adquisitivo de tus bolívares; también lo puedes pedir con `/resumen`. Si se equivoca, lo corriges escribiendo («eso fue transporte», «eran 20 mil pesos») y lo tiene en cuenta en los mensajes siguientes. En producción corre en Railway con webhook ([`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md)). Ver [`docs/STACK_Y_ARQUITECTURA.md`](docs/STACK_Y_ARQUITECTURA.md) y las decisiones en [`docs/decisions/`](docs/decisions/).
 
 ## Arquitectura
 
@@ -39,6 +39,10 @@ Copy-Item bot\.env.example bot\.env   # rellena los valores
 Para medir la extracción con el LLM real, `.\tasks.ps1 eval` corre las frases de [`bot/eval/dataset.jsonl`](bot/eval/dataset.jsonl) y guarda el resultado en [`bot/eval/results/`](bot/eval/results/). Consume cuota de Gemini, por eso no corre en el CI.
 
 Supabase local usa los puertos 553xx (base de datos en `127.0.0.1:55322`) para convivir con otros proyectos que usen los puertos por defecto.
+
+## Despliegue
+
+En local el bot usa polling; en producción, si existe `WEBHOOK_URL`, recibe los mensajes por webhook (FastAPI, con secreto y `/health`) y limita los mensajes por minuto de cada persona. La imagen sale de [`bot/Dockerfile`](bot/Dockerfile) (`.\tasks.ps1 image`) y el CI la construye en cada PR. El paso a paso para Supabase en la nube y Railway está en [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md).
 
 ## Estructura
 
