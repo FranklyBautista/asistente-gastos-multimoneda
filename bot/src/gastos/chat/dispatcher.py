@@ -5,7 +5,7 @@ from collections.abc import Iterable
 from aiogram import Dispatcher
 
 from gastos.chat.errors import on_error
-from gastos.chat.handlers import general, onboarding, rates, summary, transactions
+from gastos.chat.handlers import general, linking, onboarding, rates, summary, transactions
 from gastos.chat.middlewares import (
     AllowlistMiddleware,
     DeduplicateMiddleware,
@@ -13,6 +13,7 @@ from gastos.chat.middlewares import (
     RateLimitMiddleware,
     UserMiddleware,
 )
+from gastos.services.linking import LinkService
 from gastos.services.rates import RateService
 from gastos.services.transactions import TransactionService
 from gastos.services.updates import UpdateLedger
@@ -27,15 +28,20 @@ def build_dispatcher(
     transaction_service: TransactionService,
     summary_service: WeeklySummaryService,
     updates: UpdateLedger,
+    link_service: LinkService,
     *,
     messages_per_minute: int,
+    web_url: str | None = None,
 ) -> Dispatcher:
-    # `users`, `rates`, `transactions` y `summaries` llegan a los handlers como argumentos.
+    # Los kwargs del Dispatcher (`users`, `rates`, `transactions`, `summaries`, `links` y
+    # `web_url`) llegan a los handlers como argumentos.
     dp = Dispatcher(
         users=users,
         rates=rate_service,
         transactions=transaction_service,
         summaries=summary_service,
+        links=link_service,
+        web_url=web_url,
     )
     # Orden: contexto de logs → lista blanca → repetidos → usuario. Lo no permitido no toca
     # la BD; un update repetido se descarta antes de llegar a los handlers.
@@ -48,6 +54,11 @@ def build_dispatcher(
     dp.errors.register(on_error)
     # transactions toma el texto libre; general va último: tiene el comodín.
     dp.include_routers(
-        onboarding.router, rates.router, summary.router, transactions.router, general.router
+        onboarding.router,
+        rates.router,
+        summary.router,
+        linking.router,
+        transactions.router,
+        general.router,
     )
     return dp

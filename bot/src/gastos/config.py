@@ -38,8 +38,10 @@ class Settings(BaseSettings):
     webhook_secret: str | None = None
     # Puerto del servidor HTTP del webhook; Railway lo inyecta como PORT.
     port: int = Field(default=8080, ge=1, le=65535)
+    # URL pública de la web (Fase 9); /vincular la muestra. Vacía = solo el código.
+    web_url: str | None = None
 
-    @field_validator("webhook_url", "webhook_secret", mode="before")
+    @field_validator("webhook_url", "webhook_secret", "web_url", mode="before")
     @classmethod
     def _empty_is_none(cls, value: object) -> object:
         # En .env, `WEBHOOK_URL=` sin valor significa "no configurado".
@@ -50,6 +52,14 @@ class Settings(BaseSettings):
     def _https_only(cls, value: str | None) -> str | None:
         if value is not None and not value.startswith("https://"):
             raise ValueError("WEBHOOK_URL debe empezar con https:// (Telegram lo exige)")
+        return value.rstrip("/") if value else value
+
+    @field_validator("web_url")
+    @classmethod
+    def _http_url(cls, value: str | None) -> str | None:
+        # En local la web corre en http://localhost:3000; en producción, https.
+        if value is not None and not value.startswith(("https://", "http://")):
+            raise ValueError("WEB_URL debe empezar con https:// o http://")
         return value.rstrip("/") if value else value
 
     @field_validator("webhook_secret")

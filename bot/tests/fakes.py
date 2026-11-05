@@ -427,3 +427,25 @@ class FakeUpdateStore:
     async def purge_before(self, cutoff: datetime) -> int:
         self.cutoffs.append(cutoff)
         return 0
+
+
+# ---- Vinculación con la web (Fase 9) ----
+
+
+class FakeLinkStore:
+    """Implementa services.linking.LinkStore en memoria."""
+
+    def __init__(self, *, linked: bool = False, taken: set[str] | None = None) -> None:
+        self.linked = linked
+        self.taken = taken or set()
+        self.issued: list[tuple[UUID, str, datetime]] = []
+
+    async def is_linked(self, user_id: UUID) -> bool:
+        return self.linked
+
+    async def issue(self, user_id: UUID, code: str, expires_at: datetime) -> bool:
+        if code in self.taken:
+            return False
+        self.taken.add(code)
+        self.issued.append((user_id, code, expires_at))
+        return True

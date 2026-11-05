@@ -15,6 +15,7 @@ from gastos.config import Settings, get_settings
 from gastos.db.pool import create_pool, ping
 from gastos.db.repositories.corrections import CorrectionRepository
 from gastos.db.repositories.exchanges import ExchangeRepository
+from gastos.db.repositories.links import LinkRepository
 from gastos.db.repositories.rates import RateRepository
 from gastos.db.repositories.reports import ReportRepository
 from gastos.db.repositories.summaries import SummaryRepository
@@ -30,6 +31,7 @@ from gastos.rates.base import create_http_client
 from gastos.rates.sources import HttpRateSources
 from gastos.services.corrections import CorrectionService
 from gastos.services.exchanges import ExchangeService
+from gastos.services.linking import LinkService
 from gastos.services.query_tools import QueryService
 from gastos.services.rates import RateService
 from gastos.services.transactions import TransactionService
@@ -43,6 +45,7 @@ COMMANDS = [
     BotCommand(command="tasas", description="Ver las tasas de cambio vigentes"),
     BotCommand(command="resumen", description="Cómo va tu semana"),
     BotCommand(command="corregir", description="Corregir lo último que anotaste"),
+    BotCommand(command="vincular", description="Código para ver tus finanzas en la web"),
     BotCommand(command="ayuda", description="Qué puedo hacer"),
 ]
 
@@ -127,7 +130,9 @@ async def main() -> None:
         transactions,
         summaries,
         updates,
+        LinkService(LinkRepository(pool)),
         messages_per_minute=settings.rate_limit_per_minute,
+        web_url=settings.web_url,
     )
 
     async def send_summary(user: User, text: str) -> None:
