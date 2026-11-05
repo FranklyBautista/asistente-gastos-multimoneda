@@ -25,6 +25,15 @@ jobs:
       - run: uv run lint-imports
       - run: uv run pytest tests/unit -q
 
+  # La misma imagen que construye Railway: si se rompe aquí, se rompería el despliegue.
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -t gastos-bot:ci bot
+      - name: La imagen arranca e importa el bot
+        run: docker run --rm gastos-bot:ci python -c "import gastos.main, zoneinfo; zoneinfo.ZoneInfo('America/Caracas')"
+
   integration:
     runs-on: ubuntu-latest
     steps:
