@@ -39,6 +39,6 @@ Hasta la Fase 8 el bot solo corría en la laptop, en modo polling. Para usarlo a
 
 - **Una sola instancia.** El límite de mensajes, las aclaraciones pendientes (30 min) y el scheduler viven en memoria. Con dos réplicas el límite sería por réplica y una respuesta a un botón podría caer en la réplica que no tiene la aclaración. Un redespliegue borra las aclaraciones en curso: el usuario tendría que volver a escribir el mensaje.
 - Durante el solapamiento de un redespliegue corren dos instancias unos segundos. El resumen semanal no se duplica porque se reserva en `weekly_summaries` antes de enviarse (ADR 0008); un refresco de tasas de más no hace daño.
-- Si Telegram reenvía un update (por ejemplo, si el servidor se cayó justo después de recibirlo), puede anotarse dos veces. Sigue pendiente la idempotencia por `message_id` (guía de arquitectura, sección 4).
+- Si Telegram reenvía un update (por ejemplo, si el servidor se cayó justo después de recibirlo), podría anotarse dos veces. Lo resuelve el ADR 0011: los updates repetidos se descartan por su `update_id`.
 - Railway cobra por uso: el bot entra en los 5 USD mensuales del plan Hobby.
 - Desarrollo y producción necesitan bots distintos (dos tokens de @BotFather).

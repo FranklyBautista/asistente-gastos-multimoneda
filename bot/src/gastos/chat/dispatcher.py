@@ -8,12 +8,14 @@ from gastos.chat.errors import on_error
 from gastos.chat.handlers import general, onboarding, rates, summary, transactions
 from gastos.chat.middlewares import (
     AllowlistMiddleware,
+    DeduplicateMiddleware,
     LogContextMiddleware,
     RateLimitMiddleware,
     UserMiddleware,
 )
 from gastos.services.rates import RateService
 from gastos.services.transactions import TransactionService
+from gastos.services.updates import UpdateLedger
 from gastos.services.users import UserService
 from gastos.services.weekly_summary import WeeklySummaryService
 
@@ -24,6 +26,7 @@ def build_dispatcher(
     rate_service: RateService,
     transaction_service: TransactionService,
     summary_service: WeeklySummaryService,
+    updates: UpdateLedger,
     *,
     messages_per_minute: int,
 ) -> Dispatcher:
@@ -34,9 +37,11 @@ def build_dispatcher(
         transactions=transaction_service,
         summaries=summary_service,
     )
-    # Orden: contexto de logs → lista blanca → usuario. Lo no permitido no toca la BD.
+    # Orden: contexto de logs → lista blanca → repetidos → usuario. Lo no permitido no toca
+    # la BD; un update repetido se descarta antes de llegar a los handlers.
     dp.update.outer_middleware(LogContextMiddleware())
     dp.update.outer_middleware(AllowlistMiddleware(allowed_ids))
+    dp.update.outer_middleware(DeduplicateMiddleware(updates))
     dp.update.outer_middleware(UserMiddleware(users))
     # Solo los mensajes cuentan para el límite: los botones no llaman al LLM.
     dp.message.outer_middleware(RateLimitMiddleware(messages_per_minute))

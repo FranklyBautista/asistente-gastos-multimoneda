@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from gastos.services.rates import RateService
+from gastos.services.updates import UpdateLedger
 from gastos.services.weekly_summary import Send, WeeklySummaryService
 
 # Cada cuánto se revisa a quién le toca el resumen: cada usuario tiene su zona horaria.
@@ -20,6 +21,7 @@ def build_scheduler(
     refresh_minutes: int,
     summaries: WeeklySummaryService,
     send: Send,
+    updates: UpdateLedger,
 ) -> AsyncIOScheduler:
     """Crea el programador sin arrancarlo; se arranca con `start()` dentro del event loop."""
     scheduler = AsyncIOScheduler(timezone="UTC")
@@ -40,5 +42,13 @@ def build_scheduler(
         id="weekly_summaries",
         coalesce=True,
         max_instances=1,  # una corrida lenta (LLM) no se solapa con la siguiente
+    )
+    scheduler.add_job(
+        updates.purge,
+        "cron",
+        hour=8,  # 04:00 en Caracas: hora de poco uso
+        id="purge_processed_updates",
+        coalesce=True,
+        max_instances=1,
     )
     return scheduler
