@@ -167,7 +167,7 @@ flowchart LR
 ### 3.3 Dos reglas de seguridad
 
 - **Autorización en el repositorio:** el bot se conecta con credenciales de servicio, que se saltan la RLS. Por eso cada función de repositorio recibe `user_id` y lo filtra siempre, sin excepciones.
-- **Separación de llaves:** la llave de servicio y la URL de la base de datos viven solo en el servidor del bot. La web (Fase 9) usa solo la anon key y pasa por RLS.
+- **Separación de llaves:** la llave de servicio y la URL de la base de datos viven solo en el servidor del bot. La web (Fase 9) usa solo la anon key y la sesión de Supabase Auth: lee lo suyo por RLS (`authenticated` solo tiene `select`, `anon` nada) y escribe únicamente por funciones con `grant` explícito (ADR 0012).
 
 ---
 

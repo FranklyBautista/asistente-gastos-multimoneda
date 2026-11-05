@@ -90,7 +90,7 @@ Todas las tablas tienen RLS activo sin políticas, así que la anon key no puede
    - `WEBHOOK_SECRET`: genera uno con `uv run python -c "import secrets; print(secrets.token_urlsafe(32))"` (desde `bot\`). No hace falta guardarlo en ningún otro lado.
    - `WEBHOOK_URL`: Railway reemplaza `${{RAILWAY_PUBLIC_DOMAIN}}` por el dominio generado en el paso 2. Si no lo resuelve, pega el dominio a mano (`https://<servicio>.up.railway.app`, sin barra final).
    - `RAILWAY_DEPLOYMENT_DRAINING_SECONDS=25`: en cada redespliegue el bot espera hasta 20 s a los mensajes que está procesando; sin esto Railway lo mataría antes.
-   - Opcionales, con su valor por defecto: `RATE_LIMIT_PER_MINUTE=20`, `WEEKLY_SUMMARY_HOUR=18`, `RATES_REFRESH_MINUTES=60`, `GEMINI_MODELS`.
+   - Opcionales, con su valor por defecto: `RATE_LIMIT_PER_MINUTE=20`, `WEEKLY_SUMMARY_HOUR=18`, `RATES_REFRESH_MINUTES=60`, `GEMINI_MODELS` y `WEB_URL` (URL pública de la web; con ella `/vincular` muestra el enlace).
 
 4. **Deploy.** Railway construye la imagen, arranca el bot y espera a que `/health` responda 200 antes de mandarle tráfico.
 

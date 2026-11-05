@@ -16,6 +16,7 @@ HELP = (
     "/tasas · ver las tasas de cambio vigentes\n"
     "/resumen · cómo va tu semana (también te lo mando el domingo en la tarde)\n"
     "/corregir · corregir lo último que anotaste\n"
+    "/vincular · código para ver tus finanzas en la web\n"
     "/ayuda · ver esta ayuda\n\n"
     "Para anotar, escribe como hablas: «almuerzo 15 bs», «taxi 20 mil y café 3 dólares» "
     "o «me pagaron 200 usdt». Si no queda clara la moneda, te pregunto con botones.\n\n"
