@@ -1,0 +1,5 @@
+AGENTS.md
+CLAUDE.md
+test-results
+playwright-report
+src/lib/supabase/database.types.ts
