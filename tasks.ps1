@@ -7,13 +7,14 @@
 #>
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('help', 'setup', 'hooks', 'run', 'check', 'test', 'test-int', 'eval', 'image', 'db-up', 'db-down', 'db-reset', 'db-test')]
+    [ValidateSet('help', 'setup', 'hooks', 'run', 'check', 'test', 'test-int', 'eval', 'image', 'db-up', 'db-down', 'db-reset', 'db-test', 'web-setup', 'web', 'web-check', 'e2e')]
     [string]$Task = 'help'
 )
 
 $ErrorActionPreference = 'Stop'
 $Root = $PSScriptRoot
 $Bot = Join-Path $Root 'bot'
+$Web = Join-Path $Root 'web'
 
 # Ejecuta un comando en una carpeta y corta la tarea si devuelve un codigo distinto de 0.
 function Invoke-Step {
@@ -57,6 +58,26 @@ switch ($Task) {
     'db-down'  { Invoke-Step $Root 'supabase' @('stop') }
     'db-reset' { Invoke-Step $Root 'supabase' @('db', 'reset') }
     'db-test'  { Invoke-Step $Root 'supabase' @('test', 'db') }
+    'web-setup' { Invoke-Step $Web 'npm' @('install') }
+    'web'      { Invoke-Step $Web 'npm' @('run', 'dev') }
+    'web-check' {
+        Invoke-Step $Web 'npm' @('run', 'lint')
+        Invoke-Step $Web 'npm' @('run', 'format:check')
+        Invoke-Step $Web 'npx' @('next', 'typegen')
+        Invoke-Step $Web 'npm' @('run', 'typecheck')
+        Invoke-Step $Web 'npm' @('run', 'build')
+    }
+    'e2e'      {
+        # La prueba crea el usuario del bot con la llave de servicio de Supabase local.
+        # PowerShell 5.1 trata el stderr de la CLI como error; solo interesa el JSON de stdout.
+        $ErrorActionPreference = 'Continue'
+        $status = (& supabase status -o json 2>$null | Out-String) | ConvertFrom-Json
+        $ErrorActionPreference = 'Stop'
+        if (-not $status.SECRET_KEY) { throw 'Supabase local no responde: corre .\tasks.ps1 db-up' }
+        $env:SUPABASE_SECRET_KEY = $status.SECRET_KEY
+        Invoke-Step $Web 'npm' @('run', 'build')
+        Invoke-Step $Web 'npm' @('run', 'e2e')
+    }
     'check'    {
         Invoke-BotChecks
         Invoke-Step $Bot 'uv' @('run', 'pytest', 'tests/integration', '-q')
@@ -76,5 +97,9 @@ switch ($Task) {
         Write-Host '  db-down   detiene Supabase local'
         Write-Host '  db-reset  reaplica migraciones y seed'
         Write-Host '  db-test   corre las pruebas pgTAP'
+        Write-Host '  web-setup instala las dependencias de la web (npm install)'
+        Write-Host '  web       arranca la web en modo desarrollo (requiere web\.env.local y db-up)'
+        Write-Host '  web-check lint, formato, tipos y build de la web'
+        Write-Host '  e2e       pruebas de Playwright de la web contra Supabase local'
     }
 }
