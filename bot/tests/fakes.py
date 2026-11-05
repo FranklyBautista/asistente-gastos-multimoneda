@@ -406,3 +406,24 @@ class FakeCorrectionStore:
 
     async def recent_examples(self, user_id: UUID, limit: int) -> list[CorrectionExample]:
         return self.examples[:limit]
+
+
+# ---- Idempotencia de updates (Fase 8) ----
+
+
+class FakeUpdateStore:
+    """Implementa services.updates.UpdateStore en memoria."""
+
+    def __init__(self) -> None:
+        self.claimed: set[tuple[int, int]] = set()
+        self.cutoffs: list[datetime] = []
+
+    async def claim(self, bot_id: int, update_id: int) -> bool:
+        if (bot_id, update_id) in self.claimed:
+            return False
+        self.claimed.add((bot_id, update_id))
+        return True
+
+    async def purge_before(self, cutoff: datetime) -> int:
+        self.cutoffs.append(cutoff)
+        return 0

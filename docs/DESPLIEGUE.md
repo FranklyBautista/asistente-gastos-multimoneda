@@ -24,7 +24,7 @@ Si un día corres `.\tasks.ps1 run` con el token de producción, el bot se niega
 
 ## 2. Base de datos en Supabase
 
-1. Crea un proyecto en [supabase.com](https://supabase.com/dashboard) (plan gratuito). Elige la región **East US (North Virginia)**, la misma que el servicio de Railway, y guarda la contraseña de la base de datos.
+1. Crea un proyecto en [supabase.com](https://supabase.com/dashboard) (plan gratuito). Elige una región del este de EE. UU., cerca del servicio de Railway (US East, en Virginia), y guarda la contraseña de la base de datos en un gestor de contraseñas. El proyecto actual (`asistente-gastos-multimoneda`) está en **East US (Ohio)**, `us-east-2`: entre Ohio y Virginia la latencia es mínima.
 2. Aplica las migraciones desde la raíz del repositorio:
 
    ```powershell
@@ -34,11 +34,25 @@ Si un día corres `.\tasks.ps1 run` con el token de producción, el bot se niega
    supabase migration list                          # local y remoto deben coincidir
    ```
 
+   Si `db push` se queda en «Initialising login role...», tu red está bloqueando el puerto 5432 (pasa en algunas redes domésticas: la conexión TCP abre pero Postgres nunca contesta). La CLI siempre usa ese puerto con el proyecto enlazado, así que pásale la cadena del pooler en modo transacción (puerto 6543), con la contraseña en una variable de entorno para que no quede en el historial:
+
+   ```powershell
+   $env:PGPASSWORD = Read-Host "Contraseña de la base de datos"
+   $url = "postgresql://postgres.<ref>@aws-0-us-east-2.pooler.supabase.com:6543/postgres"
+   supabase db push --db-url $url
+   supabase migration list --db-url $url
+   Remove-Item Env:PGPASSWORD
+   ```
+
+   Railway no tiene ese bloqueo: el bot usa el pooler de sesión (5432) como dice el paso 3.
+
 3. Copia la cadena de conexión en **Connect → Connection string → Session pooler**. Tiene esta forma:
 
    ```text
-   postgresql://postgres.<ref>:<contraseña>@aws-0-us-east-1.pooler.supabase.com:5432/postgres
+   postgresql://postgres.<ref>:<contraseña>@aws-<n>-us-east-2.pooler.supabase.com:5432/postgres
    ```
+
+   Copia el host tal cual aparece en el panel: los proyectos nuevos pueden estar en `aws-1-...` en vez de `aws-0-...`, y con el host equivocado la conexión se queda colgada en vez de fallar.
 
    Usa el **pooler de sesión**, no la conexión directa (`db.<ref>.supabase.co`): en el plan gratuito la directa solo tiene IPv6. Si la contraseña tiene caracteres como `@`, `:` o `/`, escríbelos codificados (`%40`, `%3A`, `%2F`).
 
@@ -56,7 +70,7 @@ Todas las tablas tienen RLS activo sin políticas, así que la anon key no puede
    | Build → Watch Paths | `/bot/**` (los cambios en `docs/` o `supabase/` no redespliegan) |
    | Networking → Generate Domain | puerto `8080` |
    | Deploy → Healthcheck Path | `/health` |
-   | Deploy → Region | US East (cerca de Supabase) |
+   | Deploy → Region | US East (Virginia, la más cercana a Supabase en Ohio) |
    | Deploy → Replicas | `1` (el scheduler y el límite de mensajes viven en memoria) |
 
 3. En **Variables → Raw Editor** pega esto y rellena los valores:

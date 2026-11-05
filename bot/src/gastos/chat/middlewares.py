@@ -10,6 +10,7 @@ from aiogram import BaseMiddleware
 from aiogram.types import Message, TelegramObject, Update
 from aiogram.types import User as TelegramUser
 
+from gastos.services.updates import UpdateLedger
 from gastos.services.users import UserService
 
 Handler = Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]]
@@ -43,6 +44,21 @@ class AllowlistMiddleware(BaseMiddleware):
         tg_user: TelegramUser | None = data.get("event_from_user")
         if tg_user is None or tg_user.id not in self._allowed:
             log.info("update_ignored", reason="not_allowed", telegram_id=tg_user and tg_user.id)
+            return None
+        return await handler(event, data)
+
+
+class DeduplicateMiddleware(BaseMiddleware):
+    """Descarta los updates que Telegram entrega por segunda vez (ADR 0011)."""
+
+    def __init__(self, ledger: UpdateLedger) -> None:
+        self._ledger = ledger
+
+    async def __call__(self, handler: Handler, event: TelegramObject, data: dict[str, Any]) -> Any:
+        if isinstance(event, Update) and not await self._ledger.first_time(
+            data["bot"].id, event.update_id
+        ):
+            log.warning("update_ignored", reason="duplicate")
             return None
         return await handler(event, data)
 

@@ -19,6 +19,7 @@ from gastos.db.repositories.rates import RateRepository
 from gastos.db.repositories.reports import ReportRepository
 from gastos.db.repositories.summaries import SummaryRepository
 from gastos.db.repositories.transactions import TransactionRepository
+from gastos.db.repositories.updates import UpdateRepository
 from gastos.db.repositories.users import UserRepository
 from gastos.domain.user import User
 from gastos.extraction.parser import Extractor
@@ -32,6 +33,7 @@ from gastos.services.exchanges import ExchangeService
 from gastos.services.query_tools import QueryService
 from gastos.services.rates import RateService
 from gastos.services.transactions import TransactionService
+from gastos.services.updates import UpdateLedger
 from gastos.services.users import UserService
 from gastos.services.weekly_summary import WeeklySummaryService
 
@@ -117,12 +119,14 @@ async def main() -> None:
         user_repo,
         send_hour=settings.weekly_summary_hour,
     )
+    updates = UpdateLedger(UpdateRepository(pool))
     dp = build_dispatcher(
         settings.allowed_telegram_ids,
         UserService(user_repo),
         rates,
         transactions,
         summaries,
+        updates,
         messages_per_minute=settings.rate_limit_per_minute,
     )
 
@@ -133,7 +137,9 @@ async def main() -> None:
     async def database_ok() -> bool:
         return await ping(pool)
 
-    scheduler = build_scheduler(rates, settings.rates_refresh_minutes, summaries, send_summary)
+    scheduler = build_scheduler(
+        rates, settings.rates_refresh_minutes, summaries, send_summary, updates
+    )
     try:
         scheduler.start()
         await bot.set_my_commands(COMMANDS)

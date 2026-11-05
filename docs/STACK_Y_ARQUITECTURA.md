@@ -182,7 +182,7 @@ flowchart LR
 - **Prompts versionados:** una constante `PROMPT_VERSION` en `extraction/prompt.py`; el set de evaluación guarda con qué versión se midió.
 - **Logs:** JSON con `structlog`. En nivel INFO registra ids y tipos de evento, no el texto de los mensajes ni montos; ahí hay datos financieros.
 - **Tipos:** anotaciones en todo el código nuevo; pyright en modo `standard` y más estricto en `domain/`.
-- **Idempotencia (decisión pendiente para la Fase 4):** Telegram puede reenviar un update. Valora guardar el `message_id` de origen con un índice único por usuario para no duplicar movimientos, y regístralo en un ADR.
+- **Idempotencia:** Telegram puede reenviar un update. Cada update se reserva por `(bot_id, update_id)` en `processed_updates` antes de procesarlo y los repetidos se descartan (ADR 0011).
 
 ---
 
