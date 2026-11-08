@@ -13,6 +13,10 @@ Copy-Item web\.env.example web\.env.local          # pega PUBLISHABLE_KEY de `su
 
 Para probar la vinculación en local, el bot debe apuntar a la misma base de datos (`.\tasks.ps1 run`); con `WEB_URL=http://localhost:3000` en `bot\.env`, `/vincular` muestra el enlace.
 
+## Producción
+
+Publicada en <https://asistente-gastos-multimoneda.vercel.app>. El paso a paso está en [`docs/DESPLIEGUE.md`](../docs/DESPLIEGUE.md#5-web-en-vercel).
+
 ## Calidad
 
 - `.\tasks.ps1 web-check`: ESLint, Prettier, tipos y build.
