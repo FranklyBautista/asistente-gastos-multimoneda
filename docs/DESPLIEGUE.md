@@ -1,6 +1,6 @@
-# Despliegue del bot
+# Despliegue
 
-El bot corre en **Railway** (imagen de `bot/Dockerfile`, modo webhook) y la base de datos en **Supabase** (nube). Las decisiones están en el [ADR 0010](decisions/0010-despliegue.md).
+El bot corre en **Railway** (imagen de `bot/Dockerfile`, modo webhook), la web en **Vercel** y la base de datos en **Supabase** (nube). Las decisiones están en el [ADR 0010](decisions/0010-despliegue.md) y el [ADR 0013](decisions/0013-despliegue-de-la-web.md).
 
 ```mermaid
 flowchart LR
@@ -9,9 +9,11 @@ flowchart LR
   R --> G["Gemini"]
   R --> A["APIs de tasas"]
   RW["Healthcheck de Railway"] -- "GET /health" --> R
+  N["Navegador"] --> V["Vercel: web<br/>Next.js + Supabase Auth"]
+  V -- "llave publicable y RLS" --> S
 ```
 
-Pasos en orden: bot de desarrollo → base de datos → Railway → verificación. Se hacen una sola vez; después, cada merge a `main` redespliega solo.
+Pasos en orden: bot de desarrollo → base de datos → Railway → verificación → web. Se hacen una sola vez; después, cada merge a `main` despliega solo lo que cambió (ver [Operación](#operación)).
 
 ## 1. Un bot para desarrollo
 
@@ -56,24 +58,27 @@ Si un día corres `.\tasks.ps1 run` con el token de producción, el bot se niega
 
    Usa el **pooler de sesión**, no la conexión directa (`db.<ref>.supabase.co`): en el plan gratuito la directa solo tiene IPv6. Si la contraseña tiene caracteres como `@`, `:` o `/`, escríbelos codificados (`%40`, `%3A`, `%2F`).
 
-Todas las tablas tienen RLS activo sin políticas, así que la anon key no puede leer nada. El bot entra como dueño de las tablas.
+Todas las tablas tienen RLS activo: `anon` no tiene acceso a nada y `authenticated` solo lee lo suyo ([ADR 0012](decisions/0012-acceso-web-y-vinculacion.md)). El bot entra como dueño de las tablas.
 
 ## 3. Servicio en Railway
 
-1. En [railway.com](https://railway.com): **New Project → Deploy from GitHub repo** y elige `asistente-gastos-multimoneda`. El primer intento fallará porque faltan las variables; es normal.
-2. En el servicio, **Settings**:
+1. Instala la [Railway App](https://github.com/apps/railway-app) en tu cuenta de GitHub, con acceso a `asistente-gastos-multimoneda`. Que Railway aparezca en **Authorized GitHub Apps** no basta: la instalación se ve en **Installed GitHub Apps**.
+2. En [railway.com](https://railway.com): **New Project → Deploy from GitHub repo** y elige `asistente-gastos-multimoneda`. El primer intento fallará porque faltan las variables; es normal.
+3. En el servicio (no en los ajustes del proyecto), **Settings**:
 
    | Ajuste | Valor |
    |---|---|
    | Source → Root Directory | `/bot` (Railway encuentra el `Dockerfile` solo) |
    | Source → Branch | `main` |
+   | Source → Auto deploy | Pulsa **Enable** si dice «Auto deploy is disabled» |
+   | Source → Wait for CI | Activado, si aparece (espera a GitHub Actions antes de desplegar) |
    | Build → Watch Paths | `/bot/**` (los cambios en `docs/` o `supabase/` no redespliegan) |
    | Networking → Generate Domain | puerto `8080` |
    | Deploy → Healthcheck Path | `/health` |
    | Deploy → Region | US East (Virginia, la más cercana a Supabase en Ohio) |
    | Deploy → Replicas | `1` (el scheduler y el límite de mensajes viven en memoria) |
 
-3. En **Variables → Raw Editor** pega esto y rellena los valores:
+4. En **Variables → Raw Editor** pega esto y rellena los valores:
 
    ```env
    ENV=prod
@@ -88,11 +93,11 @@ Todas las tablas tienen RLS activo sin políticas, así que la anon key no puede
    ```
 
    - `WEBHOOK_SECRET`: genera uno con `uv run python -c "import secrets; print(secrets.token_urlsafe(32))"` (desde `bot\`). No hace falta guardarlo en ningún otro lado.
-   - `WEBHOOK_URL`: Railway reemplaza `${{RAILWAY_PUBLIC_DOMAIN}}` por el dominio generado en el paso 2. Si no lo resuelve, pega el dominio a mano (`https://<servicio>.up.railway.app`, sin barra final).
+   - `WEBHOOK_URL`: Railway reemplaza `${{RAILWAY_PUBLIC_DOMAIN}}` por el dominio generado en el paso 3. Si no lo resuelve, pega el dominio a mano (`https://<servicio>.up.railway.app`, sin barra final).
    - `RAILWAY_DEPLOYMENT_DRAINING_SECONDS=25`: en cada redespliegue el bot espera hasta 20 s a los mensajes que está procesando; sin esto Railway lo mataría antes.
    - Opcionales, con su valor por defecto: `RATE_LIMIT_PER_MINUTE=20`, `WEEKLY_SUMMARY_HOUR=18`, `RATES_REFRESH_MINUTES=60`, `GEMINI_MODELS` y `WEB_URL` (URL pública de la web; con ella `/vincular` muestra el enlace).
 
-4. **Deploy.** Railway construye la imagen, arranca el bot y espera a que `/health` responda 200 antes de mandarle tráfico.
+5. **Deploy.** Railway construye la imagen, arranca el bot y espera a que `/health` responda 200 antes de mandarle tráfico.
 
 ## 4. Verificación
 
@@ -108,9 +113,35 @@ Todas las tablas tienen RLS activo sin políticas, así que la anon key no puede
 3. `https://<dominio>/health` en el navegador debe responder `{"status":"ok"}`.
 4. En Telegram, con `@frankly_gastos_bot`: `/start` (la base de datos de la nube está vacía, así que el onboarding empieza de nuevo), `/tasas`, «gasté 70 bs en pasaje», «eso fue comida» y `/resumen`.
 
+## 5. Web en Vercel
+
+`vercel.json`, en la raíz del repositorio, declara solo el servicio `web`. El bot **no** va a Vercel: si el formulario propone agregar `bot`, no lo aceptes ([ADR 0013](decisions/0013-despliegue-de-la-web.md)).
+
+1. En [vercel.com/new](https://vercel.com/new), importa `asistente-gastos-multimoneda` y deja **Root Directory** en la raíz (`./`), no en `web`.
+2. Agrega las variables de entorno (los valores salen de **Project Settings → API** en Supabase):
+
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=https://<ref>.supabase.co
+   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<llave publicable, sb_publishable_...>
+   ```
+
+3. **Deploy** y copia el dominio de producción. Estas variables se fijan al compilar: si las agregas o cambias después, hay que volver a desplegar.
+4. En Supabase, **Authentication → URL Configuration**:
+
+   | Campo | Valor |
+   |---|---|
+   | Site URL | `https://<dominio-de-vercel>` |
+   | Redirect URLs | `https://<dominio-de-vercel>/auth/callback` (conserva las de `localhost`) |
+
+5. En Railway, pon `WEB_URL=https://<dominio-de-vercel>`, sin barra final. Esto redespliega el bot y `/vincular` empieza a mostrar el enlace.
+6. Comprueba el flujo completo: regístrate en `/registro`, abre el enlace del correo de confirmación, escribe `/vincular` en `@frankly_gastos_bot`, canjea el código en la web y revisa que aparezcan los saldos.
+
+En la nube la confirmación de correo está activa. Supabase la envía con su servidor de correo incluido, pensado para pruebas y con un límite bajo por hora; si no llega nada, revisa ese límite o configura un SMTP propio.
+
 ## Operación
 
-- **Redespliegue:** cada push a `main` que toque `bot/` construye y despliega una versión nueva. La anterior sigue atendiendo hasta que la nueva pasa el healthcheck.
+- **Redespliegue del bot:** con **Auto deploy** activo, cada push a `main` que toque `bot/` construye y despliega una versión nueva. La anterior sigue atendiendo hasta que la nueva pasa el healthcheck.
+- **Redespliegue de la web:** Vercel despliega los push a `main`. Volver a una versión anterior se hace desde **Deployments** en Vercel.
 - **Volver a una versión anterior:** en Deployments, el menú de un despliegue viejo → **Redeploy**.
 - **Migraciones nuevas:** `supabase db push` *antes* de mergear el código que las necesita.
 - **Probar la imagen en local:** `.\tasks.ps1 image` y luego `docker run --rm --env-file bot\.env -e WEBHOOK_URL= -e DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:55322/postgres gastos-bot:local` (polling con el bot de desarrollo).
@@ -127,3 +158,6 @@ Todas las tablas tienen RLS activo sin políticas, así que la anon key no puede
 | El bot no responde y los logs dicen `update_ignored` con `not_allowed` | Tu id no está en `ALLOWED_TELEGRAM_IDS` (debe ir en JSON: `[123]`) |
 | En local: «Este bot tiene un webhook activo» | Estás usando el token de producción en `bot\.env`; usa el del bot de desarrollo |
 | «Vas muy rápido» | Más de `RATE_LIMIT_PER_MINUTE` mensajes en un minuto; espera o sube el límite |
+| Un merge a `main` no despliega el bot | **Auto deploy** está desactivado (Settings → Source del servicio) o el cambio no toca `/bot/**` |
+| Todas las rutas de la web dan 500 («Internal Server Error») | Faltan las variables `NEXT_PUBLIC_*` en ese build; agrégalas y vuelve a desplegar |
+| El enlace del correo no vuelve a la web | Falta el dominio en **Site URL** o **Redirect URLs** de Supabase |

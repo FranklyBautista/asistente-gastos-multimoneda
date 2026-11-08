@@ -2,7 +2,7 @@
 
 Bot de Telegram que registra gastos e ingresos escritos en lenguaje natural ("gasté 15 en el almuerzo") en su moneda original: bolívares, pesos colombianos, dólares o USDT.
 Guarda cada movimiento con la tasa del momento, responde preguntas sobre tus finanzas y envía un resumen semanal.
-Una app web (en desarrollo, [`web/`](web/)) muestra todo centralizado: hoy permite crear una cuenta, vincularla con Telegram usando `/vincular` y ver los saldos.
+Una app web ([`web/`](web/), en desarrollo y publicada en <https://asistente-gastos-multimoneda.vercel.app>) muestra todo centralizado: hoy permite crear una cuenta, vincularla con Telegram usando `/vincular` y ver los saldos.
 
 > Estado: **Fase 9**. El bot registra gastos, ingresos y cambios entre monedas escritos como hablas, con la tasa del momento (Bs con BCV, paralelo o P2P; COP y USDT). Responde preguntas sobre tus finanzas con datos reales y cada domingo en la tarde te manda un resumen de la semana con la pérdida (o ganancia) de poder adquisitivo de tus bolívares; también lo puedes pedir con `/resumen`. Si se equivoca, lo corriges escribiendo («eso fue transporte», «eran 20 mil pesos») y lo tiene en cuenta en los mensajes siguientes. En producción corre en Railway con webhook ([`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md)). La web ([`web/`](web/)) ya tiene registro con correo y contraseña, vinculación con `/vincular` y lectura por dueño con RLS ([ADR 0012](docs/decisions/0012-acceso-web-y-vinculacion.md)). Ver [`docs/STACK_Y_ARQUITECTURA.md`](docs/STACK_Y_ARQUITECTURA.md) y las decisiones en [`docs/decisions/`](docs/decisions/).
 
@@ -46,7 +46,7 @@ Supabase local usa los puertos 553xx (base de datos en `127.0.0.1:55322`) para c
 
 ## Despliegue
 
-En local el bot usa polling; en producción, si existe `WEBHOOK_URL`, recibe los mensajes por webhook (FastAPI, con secreto y `/health`) y limita los mensajes por minuto de cada persona. La imagen sale de [`bot/Dockerfile`](bot/Dockerfile) (`.\tasks.ps1 image`) y el CI la construye en cada PR. El paso a paso para Supabase en la nube y Railway está en [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md).
+En local el bot usa polling; en producción, si existe `WEBHOOK_URL`, recibe los mensajes por webhook (FastAPI, con secreto y `/health`) y limita los mensajes por minuto de cada persona. La imagen sale de [`bot/Dockerfile`](bot/Dockerfile) (`.\tasks.ps1 image`) y el CI la construye en cada PR. La web corre en Vercel, configurada con [`vercel.json`](vercel.json) para desplegar solo `web/` ([ADR 0013](docs/decisions/0013-despliegue-de-la-web.md)). El paso a paso para Supabase en la nube, Railway y Vercel está en [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md).
 
 ## Estructura
 
