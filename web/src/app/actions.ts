@@ -69,3 +69,49 @@ export async function redeemCode(_prev: FormState, formData: FormData): Promise<
   if (error) return { error: linkErrorMessage(error.message) };
   redirect("/");
 }
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Errores de edit_transaction (supabase/migrations/20261109120000_web_panel.sql).
+const EDIT_ERRORS: Record<string, string> = {
+  not_linked: "Vincula tu cuenta con Telegram antes de editar.",
+  transaction_not_found: "Ese movimiento ya no existe o se deshizo.",
+  account_not_found: "Esa cuenta no existe.",
+  category_mismatch: "Elige una categoría que corresponda al tipo de movimiento.",
+  invalid_amount: "El monto debe ser mayor que cero.",
+  invalid_kind: "Elige si es un gasto o un ingreso.",
+  rate_unavailable: "Todavía no hay tasa guardada para esa moneda; inténtalo más tarde.",
+};
+
+/**
+ * Edita un movimiento con la RPC `edit_transaction`, que valida que sea de la sesión,
+ * recalcula el snapshot en USD y deja cada cambio en `corrections` (ADR 0014).
+ */
+export async function editTransaction(
+  id: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  if (!UUID.test(id)) return { error: EDIT_ERRORS.transaction_not_found };
+  const kind = String(formData.get("kind") ?? "");
+  const amount = Number(String(formData.get("amount") ?? "").replace(",", "."));
+  const account = String(formData.get("account") ?? "");
+  const category = String(formData.get("category") ?? "");
+  if (!Number.isFinite(amount) || amount <= 0) return { error: EDIT_ERRORS.invalid_amount };
+  if (!UUID.test(account)) return { error: EDIT_ERRORS.account_not_found };
+  if (!UUID.test(category)) return { error: EDIT_ERRORS.category_mismatch };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("edit_transaction", {
+    p_id: id,
+    p_kind: kind,
+    p_amount: amount,
+    p_account_id: account,
+    p_category_id: category,
+  });
+  if (error) {
+    const known = Object.keys(EDIT_ERRORS).find((code) => error.message.includes(code));
+    return { error: known ? EDIT_ERRORS[known] : "No se pudo guardar. Inténtalo de nuevo." };
+  }
+  redirect(`/movimientos?editado=${data}`);
+}

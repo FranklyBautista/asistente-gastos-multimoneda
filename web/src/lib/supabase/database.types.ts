@@ -258,14 +258,64 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"account_balances_usd": {
+                  Row: {
+                    "account_id": string | null,"balance": number | null,"balance_usd": number | null,"currency": string | null,"name": string | null,"rate_fetched_at": string | null,"rate_source": string | null,"rate_stale": boolean | null,"usd_per_unit": number | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    
+                  ]
+                },"exchange_history": {
+                  Row: {
+                    "difference_pct": number | null,"effective_rate": number | null,"from_account": string | null,"from_amount": number | null,"from_currency": string | null,"id": string | null,"occurred_at": string | null,"reference_rate": number | null,"to_account": string | null,"to_amount": number | null,"to_currency": string | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    
+                  ]
+                },"latest_rates": {
+                  Row: {
+                    "currency": string | null,"fetched_at": string | null,"source": string | null,"usd_per_unit": number | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    
+                  ]
                 }
           }
           Functions: {
             "app_user_id":
 { Args: Record<PropertyKey, never>; Returns: string
                            },
+"bolivar_rates":
+{ Args: { "p_days"?: number }; Returns: {
+              "day": string,"source": string,"usd_per_unit": number
+            }[]
+                           },
+"edit_transaction":
+{ Args: { "p_account_id": string,"p_amount": number,"p_category_id": string,"p_id": string,"p_kind": string }; Returns: number
+                           },
+"list_transactions":
+{ Args: { "p_category_id"?: string,"p_currency"?: string,"p_from"?: string,"p_kind"?: string,"p_limit"?: number,"p_offset"?: number,"p_to"?: string }; Returns: {
+              "account_id": string,"account_name": string,"amount": number,"amount_usd": number,"category_id": string,"category_name": string,"currency": string,"description": string,"edited": boolean,"id": string,"kind": string,"occurred_at": string,"rate_source": string,"total": number
+            }[]
+                           },
+"local_day_start":
+{ Args: { "p_day": string }; Returns: string
+                           },
 "redeem_link_code":
 { Args: { "p_code": string }; Returns: string
+                           },
+"spending_by_category":
+{ Args: { "p_from": string,"p_to": string }; Returns: {
+              "category": string,"movements": number,"total_usd": number
+            }[]
+                           },
+"spending_by_week":
+{ Args: { "p_weeks"?: number }; Returns: {
+              "expenses_usd": number,"income_usd": number,"week_start": string
+            }[]
                            }
           }
           Enums: {

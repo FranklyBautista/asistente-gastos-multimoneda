@@ -3,6 +3,10 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Gráficas: color de la serie validado (dataviz) para cada fondo; texto y rejilla neutros. */
+  --chart-mark: #047857;
+  --chart-grid: #e4e4e7;
+  --chart-ink: #71717a;
 }
 
 @theme inline {
@@ -16,6 +20,9 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --chart-mark: #059669;
+    --chart-grid: #27272a;
+    --chart-ink: #a1a1aa;
   }
 }
 
