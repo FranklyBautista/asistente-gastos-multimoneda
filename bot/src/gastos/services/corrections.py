@@ -196,7 +196,10 @@ class CorrectionService:
     async def _snapshot(
         self, user: User, target: StoredTransaction, currency: Currency, amount: Decimal
     ) -> UsdSnapshot:
-        """Otra moneda: la tasa de cuando se anotó. Misma moneda: la misma tasa, otro monto."""
+        """Otra moneda: la tasa de cuando se anotó. Misma moneda: la misma tasa, otro monto.
+
+        La web aplica la misma regla en la función SQL `edit_transaction` (ADR 0014).
+        """
         if currency == target.currency:
             return rescale_snapshot(amount, target.snapshot)
         if currency == "USD":

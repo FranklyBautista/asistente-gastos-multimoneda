@@ -143,7 +143,7 @@ En la nube la confirmación de correo está activa. Supabase la envía con su se
 - **Redespliegue del bot:** con **Auto deploy** activo, cada push a `main` que toque `bot/` construye y despliega una versión nueva. La anterior sigue atendiendo hasta que la nueva pasa el healthcheck.
 - **Redespliegue de la web:** Vercel despliega los push a `main`. Volver a una versión anterior se hace desde **Deployments** en Vercel.
 - **Volver a una versión anterior:** en Deployments, el menú de un despliegue viejo → **Redeploy**.
-- **Migraciones nuevas:** `supabase db push` *antes* de mergear el código que las necesita.
+- **Migraciones nuevas:** `supabase db push` *antes* de mergear el código que las necesita. Si no, el bot (Railway) o el panel (Vercel) se despliegan con el merge y fallan contra un esquema viejo; por ejemplo, el panel de la Fase 10 necesita `20261109120000_web_panel.sql`.
 - **Probar la imagen en local:** `.\tasks.ps1 image` y luego `docker run --rm --env-file bot\.env -e WEBHOOK_URL= -e DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:55322/postgres gastos-bot:local` (polling con el bot de desarrollo).
 - **Apagar el bot de producción:** detén el servicio en Railway y borra el webhook con `Invoke-RestMethod "https://api.telegram.org/bot$token/deleteWebhook"`; si no, Telegram sigue intentando entregar los mensajes.
 - **Costo:** el plan Hobby de Railway cuesta 5 USD al mes con ese mismo monto de uso incluido; un bot con una sola réplica entra ahí. Supabase y Gemini quedan en sus planes gratuitos.
