@@ -1,3 +1,4 @@
+import asyncio
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
@@ -20,7 +21,7 @@ from gastos.chat.keyboards import (
     timezone_keyboard,
     ves_source_keyboard,
 )
-from gastos.chat.middlewares import AllowlistMiddleware, UserMiddleware
+from gastos.chat.middlewares import AllowlistMiddleware, PerUserOrderMiddleware, UserMiddleware
 from gastos.domain.conversion import Rate
 from gastos.domain.currency import QuotedCurrency, RateSource
 from gastos.domain.errors import InvalidPreference, RateUnavailable
@@ -50,6 +51,32 @@ async def test_lista_blanca_deja_pasar_a_los_permitidos() -> None:
     )
     assert result == "ok"
     assert len(handler.calls) == 1
+
+
+async def test_los_updates_de_una_persona_se_atienden_en_orden() -> None:
+    """«almuerzo 15 bs» (lento: LLM) y luego «eso fue comida» (rápido) no se cruzan."""
+    middleware = PerUserOrderMiddleware()
+    events: list[str] = []
+
+    def handler_for(name: str, seconds: float) -> Any:
+        async def handler(event: TelegramObject, data: dict[str, Any]) -> None:
+            events.append(f"{name}:inicio")
+            await asyncio.sleep(seconds)
+            events.append(f"{name}:fin")
+
+        return handler
+
+    ana, beto = {"event_from_user": tg_user(1)}, {"event_from_user": tg_user(2)}
+    await asyncio.gather(
+        middleware(handler_for("registro", 0.05), Update(update_id=1), ana),
+        middleware(handler_for("correccion", 0), Update(update_id=2), ana),
+        middleware(handler_for("beto", 0), Update(update_id=3), beto),
+    )
+    ana_events = [e for e in events if not e.startswith("beto")]
+    assert ana_events == ["registro:inicio", "registro:fin", "correccion:inicio", "correccion:fin"]
+    # Otra persona no espera a Ana.
+    assert events.index("beto:fin") < events.index("registro:fin")
+    assert middleware.active() == 0  # no quedan locks en memoria
 
 
 @pytest.mark.parametrize("data", [{"event_from_user": tg_user(999)}, {}])

@@ -40,8 +40,10 @@ class Settings(BaseSettings):
     port: int = Field(default=8080, ge=1, le=65535)
     # URL pública de la web (Fase 9); /vincular la muestra. Vacía = solo el código.
     web_url: str | None = None
+    # URL de ping de healthchecks.io (u otro igual); vacía = sin latido externo.
+    healthcheck_url: str | None = None
 
-    @field_validator("webhook_url", "webhook_secret", "web_url", mode="before")
+    @field_validator("webhook_url", "webhook_secret", "web_url", "healthcheck_url", mode="before")
     @classmethod
     def _empty_is_none(cls, value: object) -> object:
         # En .env, `WEBHOOK_URL=` sin valor significa "no configurado".

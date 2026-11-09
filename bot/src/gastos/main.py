@@ -26,6 +26,7 @@ from gastos.domain.user import User
 from gastos.extraction.parser import Extractor
 from gastos.jobs.scheduler import build_scheduler
 from gastos.llm.gemini import GeminiClient
+from gastos.observability.heartbeat import healthcheck_ping
 from gastos.observability.logging import configure_logging
 from gastos.rates.base import create_http_client
 from gastos.rates.sources import HttpRateSources
@@ -104,6 +105,9 @@ async def main() -> None:
         RateRepository(pool),
         HttpRateSources(http),
         max_age=timedelta(hours=settings.rates_max_age_hours),
+        heartbeat=(
+            healthcheck_ping(http, settings.healthcheck_url) if settings.healthcheck_url else None
+        ),
     )
     transaction_repo = TransactionRepository(pool)
     exchanges = ExchangeService(ExchangeRepository(pool), transaction_repo, rates)

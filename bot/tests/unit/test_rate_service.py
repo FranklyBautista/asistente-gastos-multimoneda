@@ -1,10 +1,13 @@
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
 
 from gastos.domain.conversion import Rate
+from gastos.domain.currency import VesRateSource
 from gastos.domain.errors import RateUnavailable
+from gastos.domain.user import User
 from gastos.rates.base import RateFetchError
 from gastos.services.rates import BOARD, RateService
 from tests.fakes import FakeRateSources, FakeRateStore, make_user
@@ -107,3 +110,83 @@ async def test_tablero_con_las_tasas_que_faltan_en_none() -> None:
         COP,
         None,
     ]
+
+
+# ---- Respaldo de la fuente del Bs y saltos sospechosos (revisión del 2026-11-09) ----
+
+
+async def test_sin_tasa_de_su_fuente_del_bs_usa_otra_y_lo_avisa() -> None:
+    user = user_with("p2p")
+    current = await service(FakeRateStore(BCV, PARALLEL)).for_user(user, "VES")
+    assert (current.rate, current.stale, current.replaced) == (PARALLEL, False, "p2p")
+
+
+async def test_su_fuente_vieja_cede_ante_una_fresca() -> None:
+    old_p2p = Rate("VES", "p2p", Decimal("0.00099"), NOW - MAX_AGE - timedelta(minutes=1))
+    user = user_with("p2p")
+    current = await service(FakeRateStore(old_p2p, BCV)).for_user(user, "VES")
+    assert (current.rate, current.replaced) == (BCV, "p2p")
+
+
+async def test_si_todas_estan_viejas_usa_la_suya() -> None:
+    old = NOW - MAX_AGE - timedelta(hours=1)
+    old_p2p = Rate("VES", "p2p", Decimal("0.00099"), old)
+    old_bcv = Rate("VES", "bcv", Decimal("0.0011"), old)
+    user = user_with("p2p")
+    current = await service(FakeRateStore(old_bcv, old_p2p)).for_user(user, "VES")
+    assert (current.rate, current.stale, current.replaced) == (old_p2p, True, None)
+
+
+async def test_con_su_fuente_fresca_no_hay_reemplazo() -> None:
+    user = user_with("bcv")
+    current = await service(FakeRateStore(BCV, PARALLEL)).for_user(user, "VES")
+    assert (current.rate, current.replaced) == (BCV, None)
+
+
+async def test_sin_ninguna_tasa_del_bs_sigue_sin_poder_anotar() -> None:
+    with pytest.raises(RateUnavailable):
+        await service(FakeRateStore()).for_user(user_with("bcv"), "VES")
+
+
+async def test_un_salto_de_mas_del_25_por_ciento_se_descarta_hasta_repetirse() -> None:
+    before = Rate("COP", "fx", Decimal("0.000318") * 10, NOW - timedelta(hours=1))
+    store = FakeRateStore(before)
+    svc = service(store)
+    for _ in range(2):  # COP llega 10 veces menor: un decimal corrido
+        saved = await svc.refresh()
+        assert COP not in saved
+    assert COP in await svc.refresh()  # tercera vez seguida: es real
+    assert await store.latest("COP", "fx") == COP
+
+
+async def test_un_movimiento_normal_se_guarda_y_reinicia_la_cuenta() -> None:
+    before = Rate("COP", "fx", Decimal("0.000300"), NOW - timedelta(hours=1))  # +6 %
+    assert COP in await service(FakeRateStore(before)).refresh()
+
+
+async def test_el_latido_avisa_si_llego_alguna_tasa() -> None:
+    pings: list[bool] = []
+
+    async def heartbeat(ok: bool) -> None:
+        pings.append(ok)
+
+    store = FakeRateStore()
+    await RateService(store, sources(), MAX_AGE, clock=lambda: NOW, heartbeat=heartbeat).refresh()
+    down = sources("dolarapi", "cop", "usdt", "p2p")
+    await RateService(store, down, MAX_AGE, clock=lambda: NOW, heartbeat=heartbeat).refresh()
+    assert pings == [True, False]
+
+
+async def test_un_latido_que_falla_no_frena_el_refresco() -> None:
+    async def broken(ok: bool) -> None:
+        raise ConnectionError("healthchecks caído")
+
+    store = FakeRateStore()
+    saved = await RateService(
+        store, sources(), MAX_AGE, clock=lambda: NOW, heartbeat=broken
+    ).refresh()
+    assert len(saved) == len(BOARD)
+
+
+def user_with(source: VesRateSource) -> User:
+    return replace(make_user(), ves_rate_source=source)

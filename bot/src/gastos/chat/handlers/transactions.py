@@ -29,7 +29,7 @@ from gastos.domain.correction import KIND_LABELS as CORRECTION_KIND_LABELS
 from gastos.domain.currency import Currency, parse_currency
 from gastos.domain.transaction import SavedTransaction, TransactionDraft
 from gastos.domain.user import User
-from gastos.services.corrections import Corrected, NoChange, NothingToCorrect
+from gastos.services.corrections import Corrected, NoChange, NothingReason, NothingToCorrect
 from gastos.services.exchanges import ExchangeSaved
 from gastos.services.outcomes import Ask, NotATransaction
 from gastos.services.query_tools import (
@@ -39,6 +39,7 @@ from gastos.services.query_tools import (
     TransactionsAnswer,
     UnknownCategory,
 )
+from gastos.services.rates import CurrentRate
 from gastos.services.transactions import NeedsCurrency, Outcome, Saved, TransactionService
 
 router = Router(name="transactions")
@@ -63,6 +64,7 @@ EXPIRED = "Esa pregunta ya expiró y no anoté nada. Escribe el movimiento de nu
 UNDONE = "↩️ Deshecho, no quedó nada anotado."
 ALREADY_UNDONE = "Eso ya estaba deshecho."
 KIND_LABELS: Final = {"expense": "Gasto", "income": "Ingreso"}
+VES_SOURCE_NAMES: Final[dict[str, str]] = {"bcv": "BCV", "parallel": "paralela", "p2p": "P2P"}
 
 
 def _plain_amount(amount: Decimal) -> str:
@@ -104,13 +106,37 @@ def confirmation_text(saved: Saved, user: User, now: datetime) -> str:
     now_local = now.astimezone(tz)
     lines = [_line(tx, now_local, tz) for tx in saved.transactions]
     text = f"✅ {lines[0]}" if len(lines) == 1 else "✅ Anotado:\n" + "\n".join(lines)
-    notes = [_stale_note(rate, now) for rate in saved.stale_rates]
+    notes = [_replaced_note(c) for c in saved.replaced_rates]
+    notes += [_stale_note(rate, now) for rate in saved.stale_rates]
     return "\n\n".join([text, *notes])
+
+
+def _replaced_note(current: CurrentRate) -> str:
+    assert current.replaced is not None  # solo se llama con tasas reemplazadas
+    return (
+        f"ℹ️ Tu tasa del bolívar ({VES_SOURCE_NAMES.get(current.replaced, current.replaced)}) "
+        f"no tiene un dato reciente; usé la "
+        f"{VES_SOURCE_NAMES.get(current.rate.source, current.rate.source)}."
+    )
 
 
 # ---- Correcciones (Fase 8) ----
 
-NOTHING_TO_CORRECT = "No tienes ningún movimiento anotado que corregir."
+NOTHING_TO_CORRECT: dict[NothingReason, str] = {
+    "none": "No tienes ningún movimiento anotado que corregir.",
+    "undone": (
+        "Tu último mensaje ya se deshizo, así que no corrijo nada para no tocar uno anterior. "
+        "Si querías anotarlo distinto, escríbelo de nuevo."
+    ),
+    "exchange": (
+        "Lo último que anotaste fue un cambio de moneda, y esos no se corrigen por mensaje: "
+        "tócale Deshacer y escríbelo de nuevo."
+    ),
+    "expired": (
+        "Tu último movimiento tiene más de 24 horas. Para corregirlo, edítalo en la web "
+        "(Movimientos → Editar)."
+    ),
+}
 CORRECTION_HINT = (
     "Dime qué cambia, por ejemplo «eso fue transporte», «eran 20 mil pesos» o "
     "«/corregir era un ingreso». Corrijo el último mensaje que anotaste."
@@ -145,9 +171,13 @@ def correction_text(outcome: Corrected | NoChange, user: User, now: datetime) ->
     return f"✏️ Corregido: {line}\n({changes})"
 
 
-def last_movements_text(movements: list[SavedTransaction], user: User, now: datetime) -> str:
+def last_movements_text(
+    movements: list[SavedTransaction] | NothingToCorrect, user: User, now: datetime
+) -> str:
+    if isinstance(movements, NothingToCorrect):
+        return NOTHING_TO_CORRECT[movements.reason]
     if not movements:
-        return NOTHING_TO_CORRECT
+        return NOTHING_TO_CORRECT["none"]
     tz = ZoneInfo(user.timezone)
     now_local = now.astimezone(tz)
     lines = [f"• {_line(tx, now_local, tz)}" for tx in movements]
@@ -258,8 +288,8 @@ async def reply(message: Message, outcome: Outcome, user: User) -> None:
             )
         case Corrected() | NoChange():
             await message.answer(correction_text(outcome, user, datetime.now(UTC)))
-        case NothingToCorrect():
-            await message.answer(NOTHING_TO_CORRECT)
+        case NothingToCorrect(reason=reason):
+            await message.answer(NOTHING_TO_CORRECT[reason])
         case Ask(question=question):
             await message.answer(question)
         case NotATransaction(intent=intent):

@@ -1,5 +1,6 @@
 """Middlewares: contexto de logs, lista blanca, límite de mensajes y carga del usuario."""
 
+import asyncio
 import time
 from collections import deque
 from collections.abc import Awaitable, Callable, Iterable
@@ -46,6 +47,42 @@ class AllowlistMiddleware(BaseMiddleware):
             log.info("update_ignored", reason="not_allowed", telegram_id=tg_user and tg_user.id)
             return None
         return await handler(event, data)
+
+
+class PerUserOrderMiddleware(BaseMiddleware):
+    """Atiende los updates de cada persona de a uno, en el orden en que llegan.
+
+    El webhook (y el polling) procesan cada update en su propia tarea. Sin esto, «almuerzo 15
+    bs» y, dos segundos después, «eso fue comida» corren a la vez, y la corrección puede
+    terminar antes que el registro y caer en el mensaje anterior. Personas distintas siguen
+    en paralelo. `asyncio.Lock` atiende a quien espera en orden de llegada, y este middleware
+    va antes de cualquier consulta a la BD para que nada reordene los updates antes del lock.
+    Vive en memoria: alcanza con una sola instancia del bot (ver jobs/scheduler.py).
+    """
+
+    def __init__(self) -> None:
+        self._locks: dict[int, asyncio.Lock] = {}
+        self._users: dict[int, int] = {}  # updates en curso o esperando, por persona
+
+    async def __call__(self, handler: Handler, event: TelegramObject, data: dict[str, Any]) -> Any:
+        tg_user: TelegramUser | None = data.get("event_from_user")
+        if tg_user is None:
+            return await handler(event, data)
+        key = tg_user.id
+        lock = self._locks.setdefault(key, asyncio.Lock())
+        self._users[key] = self._users.get(key, 0) + 1
+        try:
+            async with lock:
+                return await handler(event, data)
+        finally:
+            self._users[key] -= 1
+            if self._users[key] == 0:  # nadie más espera: no se acumulan locks en memoria
+                del self._users[key]
+                del self._locks[key]
+
+    def active(self) -> int:
+        """Personas con updates en curso (para pruebas)."""
+        return len(self._locks)
 
 
 class DeduplicateMiddleware(BaseMiddleware):

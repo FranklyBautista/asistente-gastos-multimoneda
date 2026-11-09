@@ -16,6 +16,7 @@ from gastos.domain.correction import (
     Change,
     CorrectionDraft,
     CorrectionExample,
+    LastBatch,
     StoredTransaction,
     pick_target,
     rescale_snapshot,
@@ -23,6 +24,8 @@ from gastos.domain.correction import (
 from gastos.extraction.prompt import corrections_section, system_prompt
 from gastos.extraction.schema import Extraction
 from gastos.services.corrections import (
+    MAX_AGE,
+    WHAT_TO_FIX,
     Corrected,
     CorrectionService,
     NoChange,
@@ -84,7 +87,8 @@ def rates(*items: Rate) -> RateService:
 
 
 def service(store: FakeCorrectionStore, *items: Rate) -> CorrectionService:
-    return CorrectionService(store, TX_STORE, rates(*items))  # las mismas cuentas y categorías
+    # Las mismas cuentas y categorías; el reloj fijo deja los movimientos dentro de MAX_AGE.
+    return CorrectionService(store, TX_STORE, rates(*items), clock=lambda: NOW)
 
 
 # ---- Dominio ----
@@ -201,7 +205,26 @@ async def test_si_se_deshizo_mientras_tanto_no_hay_nada_que_corregir() -> None:
     store = FakeCorrectionStore([stored()])
     store.gone = True
     outcome = await service(store).correct(USER, CorrectionDraft(category="ocio"), "ocio")
-    assert isinstance(outcome, NothingToCorrect)
+    assert outcome == NothingToCorrect("undone")
+
+
+async def test_si_lo_ultimo_se_deshizo_o_fue_un_cambio_no_toca_lo_anterior() -> None:
+    for kind in ("undone", "exchange"):
+        store = FakeCorrectionStore(last=LastBatch(kind, CREATED))
+        svc = service(store)
+        outcome = await svc.correct(USER, CorrectionDraft(category="transporte"), "transporte")
+        assert outcome == NothingToCorrect(kind)
+        assert await svc.last(USER) == NothingToCorrect(kind)
+        assert store.applied == []
+
+
+async def test_lo_de_hace_mas_de_24_horas_se_edita_en_la_web() -> None:
+    old = replace(stored(), created_at=NOW - MAX_AGE - timedelta(minutes=1))
+    store = FakeCorrectionStore(last=LastBatch("transactions", old.created_at, (old,)))
+    outcome = await service(store).correct(USER, CorrectionDraft(category="ocio"), "ocio")
+    assert outcome == NothingToCorrect("expired")
+    assert "web" in NOTHING_TO_CORRECT["expired"]
+    assert store.applied == []
 
 
 # ---- Flujo completo desde el texto y aprendizaje ----
@@ -218,7 +241,7 @@ def transactions_service(
         rate_service,
         ExchangeService(FakeExchangeStore(), tx_store, rate_service),
         QueryService(FakeReportStore(), tx_store, rate_service),
-        CorrectionService(store, tx_store, rate_service),
+        CorrectionService(store, tx_store, rate_service, clock=lambda: NOW),
         clock=lambda: NOW,
     )
 
@@ -243,6 +266,31 @@ async def test_corregir_con_comando_avisa_al_llm_que_es_una_correccion() -> None
     assert isinstance(outcome, Corrected)
     assert extractor.calls[0][0] == "Corrige el último movimiento: era un ingreso"
     assert store.applied[0][3] == "era un ingreso"  # se guarda lo que escribió
+
+
+async def test_corregir_nunca_anota_un_movimiento_nuevo() -> None:
+    """«/corregir almuerzo 20 bs» leído como gasto no debe duplicar el almuerzo."""
+    expense = Extraction.model_validate(
+        {
+            "intent": "log_transactions",
+            "confidence": 0.9,
+            "transactions": [
+                {
+                    "kind": "expense",
+                    "amount": 20,
+                    "currency": "VES",
+                    "currency_confidence": 0.95,
+                    "category": "comida",
+                    "description": "almuerzo",
+                }
+            ],
+        }
+    )
+    store = FakeCorrectionStore([stored()])
+    svc = transactions_service(FakeExtractor(expense), store)
+    outcome = await svc.correct_text(USER, "almuerzo 20 bs")
+    assert outcome == Ask(WHAT_TO_FIX)
+    assert store.applied == []
 
 
 async def test_las_correcciones_pasadas_van_al_extractor() -> None:
@@ -292,4 +340,6 @@ def test_texto_de_cambios_de_tipo_y_monto() -> None:
 def test_texto_del_ultimo_mensaje() -> None:
     text = last_movements_text([as_saved(stored("almuerzo"))], USER, NOW)
     assert text.startswith("Tu último mensaje anotó:\n• Gasto · 20.000,00 USD · comida · almuerzo")
-    assert last_movements_text([], USER, NOW) == NOTHING_TO_CORRECT
+    assert last_movements_text([], USER, NOW) == NOTHING_TO_CORRECT["none"]
+    undone = last_movements_text(NothingToCorrect("undone"), USER, NOW)
+    assert undone == NOTHING_TO_CORRECT["undone"]

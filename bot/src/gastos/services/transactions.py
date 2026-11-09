@@ -35,7 +35,12 @@ from gastos.extraction.parser import (
     to_exchange_draft,
 )
 from gastos.extraction.schema import Extraction
-from gastos.services.corrections import CorrectionOutcome, CorrectionService
+from gastos.services.corrections import (
+    WHAT_TO_FIX,
+    CorrectionOutcome,
+    CorrectionService,
+    NothingToCorrect,
+)
 from gastos.services.exchanges import ExchangeSaved, ExchangeService
 from gastos.services.outcomes import Ask, NotATransaction
 from gastos.services.query_tools import QueryAnswer, QueryService
@@ -86,6 +91,8 @@ class UserRates(Protocol):
 class Saved:
     transactions: list[SavedTransaction]
     stale_rates: list[Rate]  # tasas usadas que llevan tiempo sin actualizarse
+    # Tasas del Bs de otra fuente porque la del usuario no tenía una fresca.
+    replaced_rates: list[CurrentRate] = field(default_factory=list[CurrentRate])
 
 
 @dataclass(frozen=True, slots=True)
@@ -165,14 +172,16 @@ class TransactionService:
     async def correct_text(self, user: User, text: str) -> Outcome:
         """`/corregir <texto>`: el texto se interpreta sabiendo que es una corrección."""
         self._followups.pop(user.id, None)
-        outcome = await self._interpret(user, f"Corrige el último movimiento: {text}", None, text)
+        outcome = await self._interpret(
+            user, f"Corrige el último movimiento: {text}", None, text, only_correction=True
+        )
         if isinstance(outcome, Ask):
             self._followups[user.id] = _Followup(
                 text, outcome.question, self._clock() + FOLLOWUP_TTL
             )
         return outcome
 
-    async def last_movements(self, user: User) -> list[SavedTransaction]:
+    async def last_movements(self, user: User) -> list[SavedTransaction] | NothingToCorrect:
         return await self._corrections.last(user)
 
     async def register_text(self, user: User, text: str) -> Outcome:
@@ -191,13 +200,24 @@ class TransactionService:
         return outcome
 
     async def _interpret(
-        self, user: User, text: str, previous: tuple[str, str] | None, raw_text: str
+        self,
+        user: User,
+        text: str,
+        previous: tuple[str, str] | None,
+        raw_text: str,
+        *,
+        only_correction: bool = False,
     ) -> Outcome:
         now_local = self._clock().astimezone(ZoneInfo(user.timezone))
         categories = await self._store.categories(user.id)
         names = _category_names(categories)
         examples = await self._corrections.examples(user)
         extraction = await self._extractor.extract(text, names, now_local, previous, examples)
+
+        # `/corregir` nunca anota ni consulta: si el LLM lo leyó como otra cosa
+        # («/corregir almuerzo 20 bs» → un gasto nuevo), se pregunta en vez de duplicar.
+        if only_correction and (extraction.intent != "correction" or not extraction.correction):
+            return Ask(WHAT_TO_FIX)
 
         # Al completar un cambio pendiente el LLM a veces lo etiqueta como corrección.
         completes_exchange = previous is not None and extraction.exchange is not None
@@ -278,7 +298,8 @@ class TransactionService:
             )
         saved = await self._store.insert_many(user.id, items)
         stale = [c.rate for c in rates.values() if c is not None and c.stale]
-        return Saved(saved, stale)
+        replaced = [c for c in rates.values() if c is not None and c.replaced is not None]
+        return Saved(saved, stale, replaced)
 
 
 def _category_names(categories: Sequence[Category]) -> Categories:

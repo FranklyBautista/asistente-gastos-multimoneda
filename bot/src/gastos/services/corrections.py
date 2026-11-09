@@ -5,10 +5,11 @@ mensaje anotado (si tenía varios movimientos, el que se nombre). Cada campo cam
 `corrections`, y las más recientes vuelven al prompt de extracción como ejemplos (ADR 0009).
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Final, Protocol
+from typing import Final, Literal, Protocol
 from uuid import UUID
 
 from gastos.domain.account import Account, Category, pick_account
@@ -18,6 +19,7 @@ from gastos.domain.correction import (
     CorrectedValues,
     CorrectionDraft,
     CorrectionExample,
+    LastBatch,
     StoredTransaction,
     changes_between,
     pick_target,
@@ -32,13 +34,15 @@ from gastos.services.rates import CurrentRate
 
 # Cuántas correcciones van al prompt: suficientes para aprender, pocas para no inflarlo.
 MAX_EXAMPLES: Final = 10
+# Una corrección por mensaje solo toca lo de las últimas 24 h; lo más viejo se edita en la web.
+MAX_AGE: Final = timedelta(hours=24)
 WHAT_TO_FIX = "¿Qué corrijo? Por ejemplo: «eso fue transporte» o «eran 20 mil pesos»."
 
 
 class CorrectionStore(Protocol):
     """Lo implementa db.CorrectionRepository."""
 
-    async def last_batch(self, user_id: UUID) -> list[StoredTransaction]: ...
+    async def last_batch(self, user_id: UUID) -> LastBatch: ...
     async def apply(
         self,
         user_id: UUID,
@@ -79,9 +83,20 @@ class NoChange:
     transaction: SavedTransaction
 
 
+NothingReason = Literal["none", "undone", "exchange", "expired"]
+
+
 @dataclass(frozen=True, slots=True)
 class NothingToCorrect:
-    """No hay ningún movimiento anotado (o se deshizo)."""
+    """No hay nada que corregir por mensaje, y por qué.
+
+    - `none`: nunca anotó nada.
+    - `undone`: lo último se deshizo (antes o mientras se corregía).
+    - `exchange`: lo último fue un cambio de moneda.
+    - `expired`: lo último tiene más de `MAX_AGE`; para eso está la edición en la web.
+    """
+
+    reason: NothingReason = "none"
 
 
 CorrectionOutcome = Corrected | NoChange | NothingToCorrect | Ask
@@ -131,14 +146,28 @@ class CorrectionService:
         store: CorrectionStore,
         accounts: AccountsAndCategories,
         rates: CorrectionRates,
+        clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
         self._store = store
         self._accounts = accounts
         self._rates = rates
+        self._clock = clock
 
-    async def last(self, user: User) -> list[SavedTransaction]:
+    async def _batch(self, user: User) -> tuple[StoredTransaction, ...] | NothingToCorrect:
+        """Lo que una corrección puede tocar: el último mensaje anotado, si es reciente."""
+        last = await self._store.last_batch(user.id)
+        if last.kind != "transactions" or not last.transactions:
+            return NothingToCorrect("none" if last.kind == "transactions" else last.kind)
+        if last.at is not None and self._clock() - last.at > MAX_AGE:
+            return NothingToCorrect("expired")
+        return last.transactions
+
+    async def last(self, user: User) -> list[SavedTransaction] | NothingToCorrect:
         """Los movimientos del último mensaje, para mostrar qué se corregiría."""
-        return [as_saved(tx) for tx in await self._store.last_batch(user.id)]
+        batch = await self._batch(user)
+        if isinstance(batch, NothingToCorrect):
+            return batch
+        return [as_saved(tx) for tx in batch]
 
     async def examples(self, user: User) -> list[CorrectionExample]:
         return await self._store.recent_examples(user.id, MAX_EXAMPLES)
@@ -146,9 +175,9 @@ class CorrectionService:
     async def correct(self, user: User, draft: CorrectionDraft, raw_text: str) -> CorrectionOutcome:
         if draft.is_empty:
             return Ask(WHAT_TO_FIX)
-        batch = await self._store.last_batch(user.id)
-        if not batch:
-            return NothingToCorrect()
+        batch = await self._batch(user)
+        if isinstance(batch, NothingToCorrect):
+            return batch
         target = pick_target(batch, draft.target_hint)
         if target is None:
             names = ", ".join(tx.description for tx in batch)
@@ -173,7 +202,7 @@ class CorrectionService:
         if not changes:
             return NoChange(as_saved(target))
         if not await self._store.apply(user.id, target.id, values, changes, raw_text):
-            return NothingToCorrect()
+            return NothingToCorrect("undone")
         return Corrected(_saved(target.id, values, target), changes)
 
     async def _category_for(

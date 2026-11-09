@@ -95,7 +95,7 @@ Todas las tablas tienen RLS activo: `anon` no tiene acceso a nada y `authenticat
    - `WEBHOOK_SECRET`: genera uno con `uv run python -c "import secrets; print(secrets.token_urlsafe(32))"` (desde `bot\`). No hace falta guardarlo en ningún otro lado.
    - `WEBHOOK_URL`: Railway reemplaza `${{RAILWAY_PUBLIC_DOMAIN}}` por el dominio generado en el paso 3. Si no lo resuelve, pega el dominio a mano (`https://<servicio>.up.railway.app`, sin barra final).
    - `RAILWAY_DEPLOYMENT_DRAINING_SECONDS=25`: en cada redespliegue el bot espera hasta 20 s a los mensajes que está procesando; sin esto Railway lo mataría antes.
-   - Opcionales, con su valor por defecto: `RATE_LIMIT_PER_MINUTE=20`, `WEEKLY_SUMMARY_HOUR=18`, `RATES_REFRESH_MINUTES=60`, `GEMINI_MODELS` y `WEB_URL` (URL pública de la web; con ella `/vincular` muestra el enlace).
+   - Opcionales, con su valor por defecto: `RATE_LIMIT_PER_MINUTE=20`, `WEEKLY_SUMMARY_HOUR=18`, `RATES_REFRESH_MINUTES=60`, `GEMINI_MODELS`, `WEB_URL` (URL pública de la web; con ella `/vincular` muestra el enlace) y `HEALTHCHECK_URL` (alerta si el bot deja de funcionar, sección 7).
 
 5. **Deploy.** Railway construye la imagen, arranca el bot y espera a que `/health` responda 200 antes de mandarle tráfico.
 
@@ -137,6 +137,56 @@ Todas las tablas tienen RLS activo: `anon` no tiene acceso a nada y `authenticat
 6. Comprueba el flujo completo: regístrate en `/registro`, abre el enlace del correo de confirmación, escribe `/vincular` en `@frankly_gastos_bot`, canjea el código en la web y revisa que aparezcan los saldos.
 
 En la nube la confirmación de correo está activa. Supabase la envía con su servidor de correo incluido, pensado para pruebas y con un límite bajo por hora; si no llega nada, revisa ese límite o configura un SMTP propio.
+
+## 6. Respaldos
+
+El plan gratuito de Supabase no guarda respaldos descargables. El workflow [`backup.yml`](../.github/workflows/backup.yml) hace uno cada noche (03:30 en Caracas):
+
+- Vuelca el esquema `public`, que tiene todo lo del bot.
+- Lo cifra con AES-256 y una frase de paso tuya. Esto es obligatorio porque el repo es público y cualquiera podría bajar un artefacto sin cifrar.
+- Lo guarda como artefacto del workflow durante 30 días.
+
+Las cuentas web (`auth.users`) no se respaldan: si hubiera que restaurar, cada persona vuelve a registrarse y a usar `/vincular`.
+
+**Configuración (una vez):**
+
+1. En GitHub, **Settings → Secrets and variables → Actions → New repository secret**:
+   - `SUPABASE_DB_URL`: la cadena del **Session pooler** con la contraseña (la misma forma que `DATABASE_URL` en Railway).
+   - `BACKUP_PASSPHRASE`: una frase larga. Guárdala en tu gestor de contraseñas; sin ella, los respaldos no se pueden abrir.
+2. **Actions → backup → Run workflow** para probarlo. Al terminar debe aparecer un artefacto `backup-<número>` con un archivo `gastos-AAAA-MM-DD.dump.gpg`.
+
+GitHub pausa los workflows programados de un repo público después de 60 días sin commits. Si eso pasa, **Actions → backup → Enable workflow**.
+
+**Restaurar** (en un proyecto de Supabase nuevo o en el mismo):
+
+1. Si el proyecto es nuevo, aplícale las migraciones (`supabase db push`, sección 2).
+2. Baja el artefacto, descomprime el `.zip` y descifra el volcado en una carpeta vacía:
+
+   ```powershell
+   gpg --output gastos.dump --decrypt gastos-AAAA-MM-DD.dump.gpg
+   ```
+
+3. Restaura. [`scripts/restaurar-respaldo.sh`](../scripts/restaurar-respaldo.sh) vacía las tablas de `public`, carga los datos sin disparar triggers y quita los vínculos web que ya no existen:
+
+   ```powershell
+   $env:U = Read-Host "Cadena del Session pooler (con contraseña)"
+   docker run --rm -e U -v "${PWD}:/out" -v "C:\dev\gastos-multimoneda\scripts:/scripts" postgres:17-alpine sh /scripts/restaurar-respaldo.sh
+   Remove-Item Env:U
+   ```
+
+   Al terminar muestra cuántos usuarios, movimientos y cambios quedaron. Reemplaza **todos** los datos del proyecto de destino.
+
+## 7. Alerta si el bot deja de funcionar
+
+El bot avisa a [healthchecks.io](https://healthchecks.io) (plan gratuito) cada vez que refresca las tasas, una vez por hora:
+
+- Si refrescó alguna tasa, el aviso es «bien».
+- Si ninguna fuente respondió, avisa a la URL `/fail`.
+- Si el aviso deja de llegar (el bot se cayó o el programador se trabó), healthchecks.io te manda un correo.
+
+1. Crea una cuenta y un chequeo con **Period** de 1 hora y **Grace** de 30 minutos.
+2. Copia su URL de ping (`https://hc-ping.com/<uuid>`) en la variable `HEALTHCHECK_URL` de Railway. El bot se redespliega solo.
+3. En una hora, el chequeo debe pasar a **up**.
 
 ## Operación
 

@@ -16,7 +16,12 @@ from gastos.db.repositories.reports import ReportRepository
 from gastos.db.repositories.transactions import TransactionRepository
 from gastos.db.repositories.users import UserRepository
 from gastos.domain.conversion import UsdSnapshot
-from gastos.domain.correction import CorrectedValues, CorrectionExample, changes_between
+from gastos.domain.correction import (
+    CorrectedValues,
+    CorrectionExample,
+    LastBatch,
+    changes_between,
+)
 from gastos.domain.currency import Currency
 from gastos.domain.transaction import NewTransaction
 from gastos.domain.user import User
@@ -76,10 +81,10 @@ async def save(
 async def test_el_ultimo_mensaje_con_todos_sus_movimientos(pool: AsyncConnectionPool) -> None:
     user = await new_user(pool)
     repo = CorrectionRepository(pool)
-    assert await repo.last_batch(user.id) == []
+    assert await repo.last_batch(user.id) == LastBatch("none")
     await save(pool, user, "pan 2", ("pan", 2, "USD"))
     await save(pool, user, "almuerzo 15 y café 3", ("almuerzo", 15, "USD"), ("café", 3, "USD"))
-    batch = await repo.last_batch(user.id)
+    batch = (await repo.last_batch(user.id)).transactions
     assert [(t.description, t.amount, t.category.name) for t in batch] == [
         ("almuerzo", D(15), "comida"),
         ("café", D(3), "comida"),
@@ -93,7 +98,7 @@ async def test_cambiar_de_moneda_mueve_el_saldo_y_queda_registrado(
     await save(pool, user, "taxi 20 mil", ("taxi", 20000, "USD"))
     tx_repo = TransactionRepository(pool)
     repo = CorrectionRepository(pool)
-    [target] = await repo.last_batch(user.id)
+    [target] = (await repo.last_batch(user.id)).transactions
     cop = next(a for a in await tx_repo.accounts(user.id) if a.currency == "COP")
     transport = next(c for c in await tx_repo.categories(user.id) if c.name == "transporte")
     values = CorrectedValues(
@@ -106,7 +111,7 @@ async def test_cambiar_de_moneda_mueve_el_saldo_y_queda_registrado(
         b.currency: b.balance for b in await ReportRepository(pool).account_balances(user.id)
     }
     assert (balances["USD"], balances["COP"]) == (D(0), D(-20000))
-    [after] = await repo.last_batch(user.id)
+    [after] = (await repo.last_batch(user.id)).transactions
     assert (after.currency, after.category.name, after.snapshot.amount_usd) == (
         "COP",
         "transporte",
@@ -125,7 +130,7 @@ async def test_movimiento_deshecho_o_de_otro_usuario_no_se_corrige(
     user, other = await new_user(pool), await new_user(pool)
     await save(pool, user, "pan 2", ("pan", 2, "USD"))
     repo = CorrectionRepository(pool)
-    [target] = await repo.last_batch(user.id)
+    [target] = (await repo.last_batch(user.id)).transactions
     values = CorrectedValues("expense", D(3), target.account, target.category, target.snapshot)
     changes = changes_between(target, values)
     assert not await repo.apply(other.id, target.id, values, changes, "eran 3")
@@ -141,7 +146,7 @@ async def test_ejemplos_solo_la_ultima_correccion_de_cada_campo(pool: AsyncConne
     repo = CorrectionRepository(pool)
     categories = {c.name: c for c in await tx_repo.categories(user.id)}
     for name in ("servicios", "ocio"):
-        [target] = await repo.last_batch(user.id)
+        [target] = (await repo.last_batch(user.id)).transactions
         values = CorrectedValues(
             "expense", target.amount, target.account, categories[name], target.snapshot
         )
@@ -150,4 +155,57 @@ async def test_ejemplos_solo_la_ultima_correccion_de_cada_campo(pool: AsyncConne
         )
     assert await repo.recent_examples(user.id, 10) == [
         CorrectionExample("netflix 8", "category", "ocio")
+    ]
+
+
+async def test_si_lo_ultimo_se_deshizo_no_devuelve_el_mensaje_anterior(
+    pool: AsyncConnectionPool,
+) -> None:
+    """Revisión del 2026-11-09: «almuerzo» → «taxi» → Deshacer taxi → «eso fue transporte»."""
+    user = await new_user(pool)
+    repo = CorrectionRepository(pool)
+    await save(pool, user, "almuerzo 15 bs", ("almuerzo", 15, "USD"))
+    await save(pool, user, "taxi 20 mil", ("taxi", 20000, "USD"))
+    [taxi] = (await repo.last_batch(user.id)).transactions
+    await TransactionRepository(pool).undo_batch(user.id, taxi.id)
+    last = await repo.last_batch(user.id)
+    assert (last.kind, last.transactions) == ("undone", ())
+
+
+async def test_si_lo_ultimo_fue_un_cambio_no_devuelve_movimientos(
+    pool: AsyncConnectionPool,
+) -> None:
+    user = await new_user(pool)
+    repo = CorrectionRepository(pool)
+    await save(pool, user, "almuerzo 15", ("almuerzo", 15, "USD"))
+    async with pool.connection() as conn:
+        cur = await conn.execute(
+            "insert into exchanges (user_id, from_account_id, to_account_id, from_amount, "
+            "to_amount, effective_rate) "
+            "select %s, f.id, t.id, 50, 49250, 985 from accounts f, accounts t "
+            "where f.user_id = %s and f.currency = 'USDT' "
+            "and t.user_id = %s and t.currency = 'VES' returning id",
+            (user.id, user.id, user.id),
+        )
+        row = await cur.fetchone()
+    assert row is not None
+    assert (await repo.last_batch(user.id)).kind == "exchange"
+    async with pool.connection() as conn:
+        await conn.execute("update exchanges set deleted_at = now() where id = %s", (row[0],))
+    assert (await repo.last_batch(user.id)).kind == "undone"
+
+
+async def test_el_monto_y_la_cuenta_no_son_ejemplos(pool: AsyncConnectionPool) -> None:
+    user = await new_user(pool)
+    await save(pool, user, "almuerzo 15", ("almuerzo", 15, "USD"))
+    tx_repo = TransactionRepository(pool)
+    repo = CorrectionRepository(pool)
+    [target] = (await repo.last_batch(user.id)).transactions
+    transport = next(c for c in await tx_repo.categories(user.id) if c.name == "transporte")
+    values = CorrectedValues("expense", D(18), target.account, transport, target.snapshot)
+    assert await repo.apply(
+        user.id, target.id, values, changes_between(target, values), "eran 18, de transporte"
+    )
+    assert await repo.recent_examples(user.id, 10) == [
+        CorrectionExample("almuerzo 15", "category", "transporte")
     ]

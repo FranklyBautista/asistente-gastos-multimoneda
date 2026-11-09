@@ -1,0 +1,60 @@
+name: backup
+
+# Respaldo nocturno de la base de producción (Supabase Free no guarda respaldos descargables).
+# Vuelca el esquema public (todo lo del bot), lo cifra con una frase de paso y lo guarda como
+# artefacto 30 días. El repo es público: sin cifrar, cualquiera podría bajar el volcado.
+# Restaurar: docs/DESPLIEGUE.md#respaldos.
+
+on:
+  schedule:
+    - cron: "30 7 * * *" # 03:30 en Caracas
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Volcado del esquema public
+        env:
+          # Cadena del Session pooler (puerto 5432), con la contraseña.
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::Falta el secreto SUPABASE_DB_URL (ver docs/DESPLIEGUE.md#respaldos)"
+            exit 1
+          fi
+          # pg_dump 17, la misma versión mayor que Supabase.
+          docker run --rm --user "$(id -u):$(id -g)" -e SUPABASE_DB_URL -v "$PWD:/out" \
+            postgres:17-alpine \
+            sh -c 'pg_dump "$SUPABASE_DB_URL" --schema=public --format=custom \
+                     --no-owner --no-privileges --file=/out/gastos.dump'
+          ls -l gastos.dump
+
+      - name: Cifrar
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          if [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "::error::Falta el secreto BACKUP_PASSPHRASE"
+            exit 1
+          fi
+          out="gastos-$(date -u +%Y-%m-%d).dump.gpg"
+          gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 \
+            --symmetric --cipher-algo AES256 --output "$out" gastos.dump <<<"$BACKUP_PASSPHRASE"
+          rm gastos.dump
+          ls -l "$out"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: backup-${{ github.run_id }}
+          path: gastos-*.dump.gpg
+          retention-days: 30
+          if-no-files-found: error
