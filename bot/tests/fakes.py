@@ -14,6 +14,7 @@ from gastos.domain.correction import (
     Change,
     CorrectedValues,
     CorrectionExample,
+    LastBatch,
     StoredTransaction,
 )
 from gastos.domain.currency import Currency, QuotedCurrency, RateSource, VesRateSource
@@ -382,14 +383,20 @@ class FakeCorrectionStore:
         self,
         batch: list[StoredTransaction] | None = None,
         examples: list[CorrectionExample] | None = None,
+        last: LastBatch | None = None,
     ) -> None:
         self.batch = batch or []
         self.examples = examples or []
+        self.last = last  # si está, manda sobre `batch` (deshecho, cambio, antigüedad)
         self.applied: list[tuple[UUID, CorrectedValues, list[Change], str]] = []
         self.gone = False  # simula que el movimiento se deshizo entre la lectura y el cambio
 
-    async def last_batch(self, user_id: UUID) -> list[StoredTransaction]:
-        return self.batch
+    async def last_batch(self, user_id: UUID) -> LastBatch:
+        if self.last is not None:
+            return self.last
+        if not self.batch:
+            return LastBatch("none")
+        return LastBatch("transactions", self.batch[0].created_at, tuple(self.batch))
 
     async def apply(
         self,

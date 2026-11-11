@@ -5,6 +5,7 @@ en `corrections`. Esos registros vuelven al prompt de extracción como ejemplos,
 bot no repita el mismo error con ese usuario (ADR 0009).
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import ROUND_HALF_EVEN, Decimal
@@ -47,6 +48,24 @@ class StoredTransaction:
     @property
     def currency(self) -> Currency:
         return self.account.currency
+
+
+LastActionKind = Literal["transactions", "undone", "exchange", "none"]
+
+
+@dataclass(frozen=True, slots=True)
+class LastBatch:
+    """Lo último que anotó el usuario, que es lo único que una corrección puede tocar.
+
+    - `transactions`: un mensaje con movimientos vigentes; van en `transactions`.
+    - `undone`: el último mensaje se deshizo; corregir otro anterior sería adivinar.
+    - `exchange`: lo último fue un cambio de moneda, que no se corrige por mensaje.
+    - `none`: nunca anotó nada.
+    """
+
+    kind: LastActionKind
+    at: datetime | None = None  # cuándo se anotó (created_at)
+    transactions: tuple[StoredTransaction, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,7 +117,7 @@ class CorrectionExample:
     new_value: str
 
 
-def pick_target(batch: list[StoredTransaction], hint: str | None) -> StoredTransaction | None:
+def pick_target(batch: Sequence[StoredTransaction], hint: str | None) -> StoredTransaction | None:
     """El movimiento a corregir dentro del último mensaje; None si hay varios y no se sabe cuál.
 
     Con un solo movimiento no hace falta pista. Con varios, la pista ("café") debe coincidir

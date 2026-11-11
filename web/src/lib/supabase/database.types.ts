@@ -87,14 +87,14 @@ isOneToOne: false
                   ]
                 },"exchanges": {
                   Row: {
-                    "deleted_at": string | null,"effective_rate": number,"from_account_id": string,"from_amount": number,"id": string,"occurred_at": string,"raw_text": string | null,"reference_rate": number | null,"to_account_id": string,"to_amount": number,"user_id": string
+                    "created_at": string,"deleted_at": string | null,"effective_rate": number,"from_account_id": string,"from_amount": number,"id": string,"occurred_at": string,"raw_text": string | null,"reference_rate": number | null,"to_account_id": string,"to_amount": number,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "deleted_at"?: string | null,"effective_rate": number,"from_account_id": string,"from_amount": number,"id"?: string,"occurred_at"?: string,"raw_text"?: string | null,"reference_rate"?: number | null,"to_account_id": string,"to_amount": number,"user_id": string
+                    "created_at"?: string,"deleted_at"?: string | null,"effective_rate": number,"from_account_id": string,"from_amount": number,"id"?: string,"occurred_at"?: string,"raw_text"?: string | null,"reference_rate"?: number | null,"to_account_id": string,"to_amount": number,"user_id": string
                   }
                   Update: {
-                    "deleted_at"?: string | null,"effective_rate"?: number,"from_account_id"?: string,"from_amount"?: number,"id"?: string,"occurred_at"?: string,"raw_text"?: string | null,"reference_rate"?: number | null,"to_account_id"?: string,"to_amount"?: number,"user_id"?: string
+                    "created_at"?: string,"deleted_at"?: string | null,"effective_rate"?: number,"from_account_id"?: string,"from_amount"?: number,"id"?: string,"occurred_at"?: string,"raw_text"?: string | null,"reference_rate"?: number | null,"to_account_id"?: string,"to_amount"?: number,"user_id"?: string
                   }
                   Relationships: [
                     {
