@@ -44,7 +44,8 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-      - run: supabase start -x studio,imgproxy,vector,logflare,edge-runtime,realtime,storage-api
+      # Sin mailpit: nada lo usa aquí y su puerto (55324) a veces está ocupado en el runner.
+      - run: supabase start -x studio,imgproxy,vector,logflare,edge-runtime,realtime,storage-api,mailpit
       - run: uv sync --locked
         working-directory: bot
       - run: uv run pytest tests/integration -q -rs

@@ -15,6 +15,7 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: latest
-      - run: supabase start -x studio,imgproxy,vector,logflare,edge-runtime,realtime,storage-api
+      # Sin mailpit: nada lo usa aquí y su puerto (55324) a veces está ocupado en el runner.
+      - run: supabase start -x studio,imgproxy,vector,logflare,edge-runtime,realtime,storage-api,mailpit
       - run: supabase db reset
       - run: supabase test db
