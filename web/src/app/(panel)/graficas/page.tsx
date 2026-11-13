@@ -1,8 +1,7 @@
-import Link from "next/link";
 import { Suspense } from "react";
 
 import { BolivarChart, CategoryChart, WeeklyChart } from "@/components/charts";
-import { Card, Empty, LinkBanner, Loading } from "@/components/panel";
+import { Card, Chip, Empty, LinkBanner, Loading } from "@/components/panel";
 import {
   getBalances,
   getBolivarRates,
@@ -29,7 +28,7 @@ const BOLIVAR_DAYS = 90;
 export default function ChartsPage({ searchParams }: PageProps<"/graficas">) {
   return (
     <>
-      <h1 className="text-2xl font-semibold">Gráficas</h1>
+      <h1 className="text-[26px] font-extrabold tracking-tight">Gráficas</h1>
       <Suspense fallback={<Loading />}>
         <Charts searchParams={searchParams} />
       </Suspense>
@@ -41,19 +40,21 @@ export default function ChartsPage({ searchParams }: PageProps<"/graficas">) {
 function DataTable({ headers, rows }: { headers: [string, string]; rows: [string, string][] }) {
   return (
     <details className="text-sm">
-      <summary className="cursor-pointer text-zinc-600 dark:text-zinc-400">Ver datos</summary>
+      <summary className="cursor-pointer text-[13px] font-semibold text-lime hover:text-lime-soft">
+        Ver datos
+      </summary>
       <table className="mt-2 w-full text-left">
-        <thead className="text-xs text-zinc-500">
+        <thead className="text-xs text-muted">
           <tr>
             <th className="py-1 font-normal">{headers[0]}</th>
             <th className="py-1 text-right font-normal">{headers[1]}</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+        <tbody className="divide-y divide-line">
           {rows.map(([a, b]) => (
             <tr key={a}>
               <td className="py-1">{a}</td>
-              <td className="py-1 text-right font-mono tabular-nums">{b}</td>
+              <td className="py-1 text-right font-semibold">{b}</td>
             </tr>
           ))}
         </tbody>
@@ -86,30 +87,22 @@ async function Charts({ searchParams }: Pick<PageProps<"/graficas">, "searchPara
 
   return (
     <>
-      <Card title="Gasto por categoría">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Últimos {days} días, en USD al momento de cada gasto · total{" "}
-            <span className="font-mono tabular-nums">{formatUsd(categoryTotal)}</span>
-          </p>
-          <nav aria-label="Periodo" className="flex gap-1 text-sm">
+      <Card
+        title="Gasto por categoría"
+        action={
+          <nav aria-label="Periodo" className="flex rounded-full border border-line bg-field p-1">
             {PERIODS.map((p) => (
-              <Link
-                key={p}
-                href={`/graficas?dias=${p}`}
-                aria-current={p === days ? "true" : undefined}
-                className={
-                  "rounded-md px-2 py-1 " +
-                  (p === days
-                    ? "bg-zinc-200 font-medium dark:bg-zinc-800"
-                    : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900")
-                }
-              >
+              <Chip key={p} solid href={`/graficas?dias=${p}`} active={p === days}>
                 {p} días
-              </Link>
+              </Chip>
             ))}
           </nav>
-        </div>
+        }
+      >
+        <p className="text-sm text-muted">
+          Últimos {days} días, en USD al momento de cada gasto · total{" "}
+          <span className="font-bold text-foreground">{formatUsd(categoryTotal)}</span>
+        </p>
         {categories.length === 0 ? (
           <Empty>No hay gastos en este periodo.</Empty>
         ) : (
@@ -124,9 +117,7 @@ async function Charts({ searchParams }: Pick<PageProps<"/graficas">, "searchPara
       </Card>
 
       <Card title="Gasto por semana">
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Últimas {WEEKS} semanas (de lunes a domingo), en USD.
-        </p>
+        <p className="text-sm text-muted">Últimas {WEEKS} semanas (de lunes a domingo), en USD.</p>
         <WeeklyChart data={weeks} />
         <DataTable
           headers={["Semana del", "Gasto (USD)"]}
@@ -175,11 +166,11 @@ function BolivarSummary({
   const change = (lastRate / firstRate - 1) * 100;
   return (
     <div className="flex flex-col gap-1">
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="text-sm text-muted">
         Bs por cada USD con la tasa {source}, desde el {formatDay(firstDay, "medium")}. Si la línea
         sube, cada bolívar compra menos dólares.
       </p>
-      <p className="font-mono text-2xl font-semibold tabular-nums" data-testid="bolivar-change">
+      <p className="text-[28px] font-extrabold tracking-tight" data-testid="bolivar-change">
         {formatPercent(Number(change.toFixed(2)))}
       </p>
       <p className="text-sm">
