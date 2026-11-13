@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 
-import { Card, Empty, LinkBanner, Loading } from "@/components/panel";
+import { ArrowRightIcon, SendIcon } from "@/components/icons";
+import { Empty, LinkBanner, Loading } from "@/components/panel";
 import { type ExchangeRow, getExchanges, getSession } from "@/lib/data";
 import {
   CURRENCY_LABELS,
@@ -16,7 +17,7 @@ export const metadata = { title: "Cambios · Asistente de gastos" };
 export default function ExchangesPage() {
   return (
     <>
-      <h1 className="text-2xl font-semibold">Cambios entre monedas</h1>
+      <h1 className="text-[26px] font-extrabold tracking-tight">Cambios entre monedas</h1>
       <Suspense fallback={<Loading />}>
         <Exchanges />
       </Suspense>
@@ -45,33 +46,44 @@ async function Exchanges() {
   return (
     <>
       {average !== null ? (
-        <Card>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Diferencia promedio contra la tasa de referencia ({compared.length}{" "}
-            {compared.length === 1 ? "cambio" : "cambios"})
+        <section
+          aria-label="Diferencia promedio"
+          className="hero-lime flex flex-col gap-2 rounded-[26px] p-5"
+        >
+          <p className="text-[13px] font-semibold opacity-80">
+            Diferencia promedio contra la tasa de referencia
           </p>
-          <p className="font-mono text-2xl font-semibold tabular-nums">
-            {formatPercent(Number(average.toFixed(2)))}
+          <p className="flex flex-wrap items-baseline gap-x-2.5">
+            <span className="text-[40px] leading-tight font-extrabold tracking-tight">
+              {formatPercent(Number(average.toFixed(2)))}
+            </span>
+            <span className="text-[13px] font-semibold opacity-75">
+              en {compared.length} {compared.length === 1 ? "cambio" : "cambios"}
+            </span>
           </p>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs font-medium opacity-80">
             Positivo: recibiste más que con la tasa de referencia del momento. Negativo: menos.
           </p>
-        </Card>
+        </section>
       ) : null}
-      <Card>
-        {exchanges.length === 0 ? (
-          <Empty>
-            Todavía no registraste cambios. En Telegram, escribe por ejemplo «cambié 50 usdt a bs a
-            985».
-          </Empty>
-        ) : (
-          <ul className="-mx-4 divide-y divide-zinc-200 dark:divide-zinc-800" aria-label="Cambios">
-            {exchanges.map((e) => (
-              <ExchangeItem key={e.id} exchange={e} timeZone={user.timezone} />
-            ))}
-          </ul>
-        )}
-      </Card>
+
+      <h2 className="text-[17px] font-bold">Historial</h2>
+      {exchanges.length === 0 ? (
+        <Empty>
+          Todavía no registraste cambios. En Telegram, escribe por ejemplo «cambié 50 usdt a bs a
+          985».
+        </Empty>
+      ) : (
+        <ul className="flex flex-col gap-2.5" aria-label="Cambios">
+          {exchanges.map((e) => (
+            <ExchangeItem key={e.id} exchange={e} timeZone={user.timezone} />
+          ))}
+        </ul>
+      )}
+      <p className="flex items-start gap-2 text-xs text-muted">
+        <SendIcon className="mt-px size-4 flex-none" strokeWidth={1.8} />
+        Para anotar un cambio, escríbele al bot por ejemplo «cambié 50 usdt a bs a 985».
+      </p>
     </>
   );
 }
@@ -79,44 +91,46 @@ async function Exchanges() {
 function ExchangeItem({ exchange: e, timeZone }: { exchange: ExchangeRow; timeZone: string }) {
   const diff = e.differencePct;
   return (
-    <li className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
-      <div className="flex flex-col">
-        <span className="font-mono tabular-nums">
-          {formatAmount(e.fromAmount, e.fromCurrency)} {CURRENCY_LABELS[e.fromCurrency]} →{" "}
-          {formatAmount(e.toAmount, e.toCurrency)} {CURRENCY_LABELS[e.toCurrency]}
-        </span>
-        <span className="text-xs text-zinc-500">
-          {formatDateTime(e.occurredAt, timeZone)} · {e.fromAccount} → {e.toAccount}
-        </span>
-      </div>
-      <div className="flex flex-col text-sm sm:items-end">
-        <span>
-          Tasa:{" "}
-          <span className="font-mono">
-            {describeRate(e.effectiveRate, e.fromCurrency, e.toCurrency)}
+    <li className="glass flex flex-col gap-2.5 rounded-[20px] px-4 py-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="flex flex-wrap items-center gap-x-2 text-[15px] font-bold">
+          <span>
+            {formatAmount(e.fromAmount, e.fromCurrency)} {CURRENCY_LABELS[e.fromCurrency]}
+          </span>{" "}
+          <span className="sr-only">→</span>{" "}
+          <ArrowRightIcon className="size-4 text-lime" strokeWidth={2} />{" "}
+          <span>
+            {formatAmount(e.toAmount, e.toCurrency)} {CURRENCY_LABELS[e.toCurrency]}
           </span>
         </span>
-        {e.referenceRate !== null ? (
-          <span className="text-xs text-zinc-500">
-            Referencia: {describeRate(e.referenceRate, e.fromCurrency, e.toCurrency)}
-          </span>
-        ) : (
-          <span className="text-xs text-zinc-500">Sin tasa de referencia</span>
-        )}
         {diff !== null ? (
           <span
             className={
-              "font-mono text-sm tabular-nums " +
+              "rounded-full px-2.5 py-1 text-xs font-bold " +
               (diff > 0
-                ? "text-emerald-700 dark:text-emerald-400"
+                ? "bg-lime/15 text-lime-soft"
                 : diff < 0
-                  ? "text-red-700 dark:text-red-400"
-                  : "")
+                  ? "bg-danger/15 text-[#ff9c95]"
+                  : "bg-white/10 text-muted")
             }
           >
             {formatPercent(diff)} {diff > 0 ? "a tu favor" : diff < 0 ? "en contra" : ""}
           </span>
         ) : null}
+      </div>
+      <div className="flex flex-col gap-0.5 text-xs text-muted sm:flex-row sm:justify-between sm:gap-4">
+        <span>
+          Tasa:{" "}
+          <span className="font-semibold text-foreground">
+            {describeRate(e.effectiveRate, e.fromCurrency, e.toCurrency)}
+          </span>
+          {e.referenceRate !== null
+            ? ` · referencia: ${describeRate(e.referenceRate, e.fromCurrency, e.toCurrency)}`
+            : " · sin tasa de referencia"}
+        </span>
+        <span className="text-faint">
+          {formatDateTime(e.occurredAt, timeZone)} · {e.fromAccount} → {e.toAccount}
+        </span>
       </div>
     </li>
   );

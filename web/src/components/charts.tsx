@@ -49,9 +49,9 @@ function shortDay(day: string) {
 
 const tooltipStyle = {
   contentStyle: {
-    background: "var(--background)",
+    background: "var(--chart-tooltip)",
     border: `1px solid ${GRID}`,
-    borderRadius: 8,
+    borderRadius: 14,
     fontSize: 13,
   },
   labelStyle: { color: "var(--foreground)" },
@@ -75,7 +75,7 @@ export function CategoryChart({ data }: { data: { category: string; totalUsd: nu
             axisLine={false}
           />
           <Tooltip {...tooltipStyle} formatter={(value) => [usd.format(Number(value)), "Gasto"]} />
-          <Bar dataKey="totalUsd" fill={MARK} barSize={20} radius={[0, 4, 4, 0]}>
+          <Bar dataKey="totalUsd" fill={MARK} barSize={20} radius={[0, 8, 8, 0]}>
             <LabelList
               dataKey="totalUsd"
               position="right"
@@ -116,7 +116,7 @@ export function WeeklyChart({ data }: { data: { weekStart: string; expensesUsd: 
             labelFormatter={(label) => `Semana del ${shortDay(String(label))}`}
             formatter={(value) => [usd.format(Number(value)), "Gasto"]}
           />
-          <Bar dataKey="expensesUsd" fill={MARK} maxBarSize={24} radius={[4, 4, 0, 0]} />
+          <Bar dataKey="expensesUsd" fill={MARK} maxBarSize={24} radius={[8, 8, 3, 3]} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -156,11 +156,11 @@ export function BolivarChart({ data }: { data: { day: string; bsPerUsd: number }
             type="monotone"
             dataKey="bsPerUsd"
             stroke={MARK}
-            strokeWidth={2}
+            strokeWidth={2.5}
             strokeLinecap="round"
             strokeLinejoin="round"
             dot={false}
-            activeDot={{ r: 4, stroke: "var(--background)", strokeWidth: 2, fill: MARK }}
+            activeDot={{ r: 4, stroke: "var(--chart-tooltip)", strokeWidth: 2, fill: MARK }}
           />
         </LineChart>
       </ResponsiveContainer>
