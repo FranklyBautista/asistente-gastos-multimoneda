@@ -22,11 +22,12 @@ Las tasas salen de BCV, el paralelo y Binance P2P para el Bs (cada persona elige
 
 ## Métricas
 
-- **Extracción con Gemini real** (`.\tasks.ps1 eval`, prompt `extraccion-v5`, 72 casos de [`bot/eval/dataset.jsonl`](bot/eval/dataset.jsonl)):
-  - 69 de 72 casos exactos (95,8 %).
-  - Intención acertada en 72 de 72.
-  - Moneda dudosa preguntada en 14 de 14 y moneda clara anotada en 35 de 35.
-  - Categoría en 39 de 39, consultas en 29 de 29 y correcciones en 9 de 9.
+- **Extracción con Gemini real** (`.\tasks.ps1 eval`, prompt `extraccion-v6`, 93 casos de [`bot/eval/dataset.jsonl`](bot/eval/dataset.jsonl); 89 respondidos, 4 sin respuesta por el límite del plan gratuito):
+  - 88 de 89 casos exactos (98,9 %). El fallo es un cambio sin la moneda de destino explícita, que el bot pregunta.
+  - Intención acertada en 89 de 89.
+  - Moneda dudosa preguntada en 15 de 15 y moneda clara anotada en 37 de 37.
+  - Categoría en 40 de 40 y consultas en 36 de 36.
+  - Deudas: dirección («debo» frente a «me debe») en 15 de 15, deudas y pagos con todos sus campos (57 de 57).
 - **Pruebas:**
   - Bot: unitarias e integración con pytest.
   - Base de datos: pgTAP sobre esquema, RLS, vinculación, panel y deudas.
