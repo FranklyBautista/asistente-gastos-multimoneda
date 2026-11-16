@@ -36,6 +36,13 @@ select created_at, deleted_at is not null from exchanges
 where user_id = %s
 order by created_at desc limit 1
 """
+# La última deuda o pago de deuda (Fase 11), aunque se haya anulado o deshecho.
+_LAST_DEBT = """
+select greatest(
+  (select max(created_at) from debts where user_id = %(user_id)s),
+  (select max(created_at) from debt_payments where user_id = %(user_id)s)
+)
+"""
 
 # Los movimientos de ese mensaje: comparten created_at y raw_text (ver undo_batch).
 _BATCH = """
@@ -107,8 +114,14 @@ class CorrectionRepository:
             tx = await cur.fetchone()
             cur = await conn.execute(_LAST_EXCHANGE, (user_id,))
             ex = await cur.fetchone()
+            cur = await conn.execute(_LAST_DEBT, {"user_id": user_id})
+            debt = await cur.fetchone()
             if ex is not None and (tx is None or ex[0] > tx[0]):
                 return LastBatch("undone" if ex[1] else "exchange", cast(datetime, ex[0]))
+            # >=: el gasto que nace al pagar una deuda comparte created_at con el pago, y
+            # corregirlo por mensaje desajustaría el pago.
+            if debt is not None and debt[0] is not None and (tx is None or debt[0] >= tx[0]):
+                return LastBatch("debt", cast(datetime, debt[0]))
             if tx is None:
                 return LastBatch("none")
             created_at = cast(datetime, tx[0])

@@ -20,6 +20,7 @@ from gastos.domain.account import Account, Category, pick_account
 from gastos.domain.conversion import Rate, to_usd
 from gastos.domain.correction import CorrectionExample
 from gastos.domain.currency import Currency
+from gastos.domain.debt import DEBT_CATEGORIES
 from gastos.domain.errors import AccountNotFound
 from gastos.domain.transaction import (
     FALLBACK_CATEGORY,
@@ -31,8 +32,10 @@ from gastos.domain.user import User
 from gastos.extraction.parser import (
     Categories,
     to_correction_draft,
+    to_debt_draft,
     to_drafts,
     to_exchange_draft,
+    to_payment_draft,
 )
 from gastos.extraction.schema import Extraction
 from gastos.services.corrections import (
@@ -41,6 +44,7 @@ from gastos.services.corrections import (
     CorrectionService,
     NothingToCorrect,
 )
+from gastos.services.debts import DebtList, DebtOutcome, DebtService
 from gastos.services.exchanges import ExchangeSaved, ExchangeService
 from gastos.services.outcomes import Ask, NotATransaction
 from gastos.services.query_tools import QueryAnswer, QueryService
@@ -102,7 +106,15 @@ class NeedsCurrency:
 
 
 Outcome = (
-    Saved | NeedsCurrency | ExchangeSaved | QueryAnswer | CorrectionOutcome | Ask | NotATransaction
+    Saved
+    | NeedsCurrency
+    | ExchangeSaved
+    | QueryAnswer
+    | CorrectionOutcome
+    | DebtOutcome
+    | DebtList
+    | Ask
+    | NotATransaction
 )
 
 
@@ -157,6 +169,7 @@ class TransactionService:
         exchanges: ExchangeService,
         queries: QueryService,
         corrections: CorrectionService,
+        debts: DebtService,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
         self._store = store
@@ -165,6 +178,7 @@ class TransactionService:
         self._exchanges = exchanges
         self._queries = queries
         self._corrections = corrections
+        self._debts = debts
         self._clock = clock
         self._pending = PendingStore(clock)
         self._followups: dict[UUID, _Followup] = {}
@@ -226,8 +240,26 @@ class TransactionService:
                 return Ask("¿Qué moneda cambiaste, cuánto y a qué tasa?")
             draft = to_exchange_draft(extraction.exchange, now_local)
             return await self._exchanges.register(user, draft, raw_text)
+        if extraction.intent == "log_debt":
+            if extraction.debt is None:
+                return Ask("¿Quién le debe a quién, cuánto y en qué moneda?")
+            debt = to_debt_draft(extraction.debt, names)
+            return await self._debts.register(user, debt, raw_text)
+        if extraction.intent == "settle_debt":
+            if extraction.debt_payment is None:
+                return Ask("¿Qué deuda se pagó? Dime con quién y cuánto.")
+            payment = to_payment_draft(extraction.debt_payment)
+            return await self._debts.settle(user, payment, raw_text)
         if extraction.intent == "query" and extraction.query is not None:
-            return await self._queries.answer(user, extraction.query, now_local)
+            query = extraction.query
+            if query.tool == "list_debts":
+                return await self._debts.list(
+                    user,
+                    direction=query.direction,
+                    counterparty=query.counterparty,
+                    include_settled=query.include_settled,
+                )
+            return await self._queries.answer(user, query, now_local)
         if extraction.intent == "correction" and extraction.correction is not None:
             draft = to_correction_draft(extraction.correction)
             return await self._corrections.correct(user, draft, raw_text)
@@ -303,9 +335,11 @@ class TransactionService:
 
 
 def _category_names(categories: Sequence[Category]) -> Categories:
+    """Las que el LLM puede elegir: sin las de deudas, que solo usa la liquidación."""
+    usable = [c for c in categories if c.name not in DEBT_CATEGORIES]
     return Categories(
-        expense=[c.name for c in categories if c.kind == "expense"],
-        income=[c.name for c in categories if c.kind == "income"],
+        expense=[c.name for c in usable if c.kind == "expense"],
+        income=[c.name for c in usable if c.kind == "income"],
     )
 
 

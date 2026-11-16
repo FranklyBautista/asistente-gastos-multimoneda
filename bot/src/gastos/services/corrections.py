@@ -83,7 +83,7 @@ class NoChange:
     transaction: SavedTransaction
 
 
-NothingReason = Literal["none", "undone", "exchange", "expired"]
+NothingReason = Literal["none", "undone", "exchange", "debt", "expired"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,6 +93,7 @@ class NothingToCorrect:
     - `none`: nunca anotó nada.
     - `undone`: lo último se deshizo (antes o mientras se corregía).
     - `exchange`: lo último fue un cambio de moneda.
+    - `debt`: lo último fue una deuda o un pago de deuda.
     - `expired`: lo último tiene más de `MAX_AGE`; para eso está la edición en la web.
     """
 

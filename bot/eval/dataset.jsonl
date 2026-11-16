@@ -71,3 +71,23 @@
 {"id": "other-02", "text": "gracias!", "intent": "other"}
 {"id": "ask-01", "text": "gasté en el almuerzo", "intent": "log_transactions", "transactions": []}
 {"id": "ask-02", "text": "pagué el almuerzo pero no recuerdo cuánto", "intent": "log_transactions", "transactions": []}
+{"id": "deu-01", "text": "le debo 20 dólares a miguel", "intent": "log_debt", "debt": {"direction": "i_owe", "counterparty": "miguel", "amount": 20, "currency": "USD"}}
+{"id": "deu-02", "text": "miguel me debe 50 mil", "intent": "log_debt", "debt": {"direction": "owed_to_me", "counterparty": "miguel", "amount": 50000, "currency": null}}
+{"id": "deu-03", "text": "le presté 10 usdt a pedro", "intent": "log_debt", "debt": {"direction": "owed_to_me", "counterparty": "pedro", "amount": 10, "currency": "USDT"}}
+{"id": "deu-04", "text": "carla me prestó 500 bs", "intent": "log_debt", "debt": {"direction": "i_owe", "counterparty": "carla", "amount": 500, "currency": "VES"}}
+{"id": "deu-05", "text": "quedé debiéndole 15 dólares del almuerzo a josé", "intent": "log_debt", "debt": {"direction": "i_owe", "counterparty": "josé", "amount": 15, "currency": "USD", "category": "comida"}}
+{"id": "deu-06", "text": "andrés me quedó debiendo 30 mil pesos del taxi", "intent": "log_debt", "debt": {"direction": "owed_to_me", "counterparty": "andrés", "amount": 30000, "currency": "COP", "category": "transporte"}}
+{"id": "deu-07", "text": "le debo 40 a mi mamá", "intent": "log_debt", "debt": {"direction": "i_owe", "amount": 40, "currency": null}}
+{"id": "deu-08", "text": "luisa me debe $25", "intent": "log_debt", "debt": {"direction": "owed_to_me", "counterparty": "luisa", "amount": 25, "currency": null}}
+{"id": "pag-01", "text": "se pagó la deuda con miguel de 20 dólares", "intent": "settle_debt", "debt_payment": {"direction": "i_owe", "counterparty": "miguel", "amount": 20, "currency": "USD"}}
+{"id": "pag-02", "text": "le pagué 10 a miguel", "intent": "settle_debt", "debt_payment": {"direction": "i_owe", "counterparty": "miguel", "amount": 10}}
+{"id": "pag-03", "text": "miguel me pagó", "intent": "settle_debt", "debt_payment": {"direction": "owed_to_me", "counterparty": "miguel", "amount": null}}
+{"id": "pag-04", "text": "miguel me pagó 20", "intent": "settle_debt", "debt_payment": {"direction": "owed_to_me", "counterparty": "miguel", "amount": 20}}
+{"id": "pag-05", "text": "ya le devolví los 500 bs a carla", "intent": "settle_debt", "debt_payment": {"direction": "i_owe", "counterparty": "carla", "amount": 500, "currency": "VES"}}
+{"id": "pag-06", "text": "pedro me devolvió los usdt por binance", "intent": "settle_debt", "debt_payment": {"direction": "owed_to_me", "counterparty": "pedro", "currency": "USDT", "account_hint": "binance"}}
+{"id": "pag-07", "text": "le pagué todo lo que le debía a josé", "intent": "settle_debt", "debt_payment": {"direction": "i_owe", "counterparty": "josé", "amount": null}}
+{"id": "pag-08", "text": "me pagaron 200 usdt", "intent": "log_transactions", "transactions": [{"kind": "income", "amount": 200, "currency": "USDT"}]}
+{"id": "pag-09", "text": "le pagué el almuerzo a miguel, 12 dólares", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 12, "currency": "USD", "category": "comida"}]}
+{"id": "dq-01", "text": "¿cuánto debo?", "intent": "query", "query": {"tool": "list_debts", "direction": "i_owe"}}
+{"id": "dq-02", "text": "¿quién me debe plata?", "intent": "query", "query": {"tool": "list_debts", "direction": "owed_to_me"}}
+{"id": "dq-03", "text": "¿cuánto le debo a miguel?", "intent": "query", "query": {"tool": "list_debts", "direction": "i_owe", "counterparty": "miguel"}}

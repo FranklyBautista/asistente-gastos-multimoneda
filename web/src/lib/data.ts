@@ -315,3 +315,46 @@ export async function getExchanges(): Promise<ExchangeRow[]> {
     differencePct: r.difference_pct === null ? null : Number(r.difference_pct),
   }));
 }
+
+export type DebtDirection = "i_owe" | "owed_to_me";
+export type DebtStatus = "open" | "partial" | "settled";
+
+export type DebtRow = {
+  id: string;
+  direction: DebtDirection;
+  counterparty: string;
+  counterpartyKey: string;
+  currency: Currency;
+  amount: number;
+  remaining: number;
+  status: DebtStatus;
+  description: string | null;
+  categoryId: string | null;
+  incurredAt: string;
+  lastPaidAt: string | null;
+};
+
+/** Deudas vigentes (sin las anuladas) desde `debt_balances`, bajo la RLS de la sesión. */
+export async function getDebts(): Promise<DebtRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("debt_balances")
+    .select("*")
+    .order("incurred_at", { ascending: false })
+    .limit(500);
+  if (error) throw new Error(`No se pudieron leer las deudas: ${error.message}`);
+  return data.map((r) => ({
+    id: String(r.debt_id),
+    direction: r.direction === "owed_to_me" ? "owed_to_me" : "i_owe",
+    counterparty: String(r.counterparty),
+    counterpartyKey: String(r.counterparty_key),
+    currency: currency(r.currency),
+    amount: Number(r.amount),
+    remaining: Number(r.remaining),
+    status: r.status === "settled" || r.status === "partial" ? r.status : "open",
+    description: r.description,
+    categoryId: r.category_id,
+    incurredAt: String(r.incurred_at),
+    lastPaidAt: r.last_paid_at,
+  }));
+}

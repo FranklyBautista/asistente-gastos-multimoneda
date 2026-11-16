@@ -23,8 +23,8 @@ select is(
 -- Datos por defecto
 select is(
   (select count(*)::int from categories where user_id is null),
-  8,
-  'existen las 8 categorías globales'
+  10,
+  'existen las 10 categorías globales'
 );
 
 insert into users (id, telegram_id) values

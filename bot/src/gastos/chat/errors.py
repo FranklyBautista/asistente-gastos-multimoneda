@@ -6,6 +6,7 @@ from aiogram.types import ErrorEvent
 
 from gastos.domain.errors import (
     AccountNotFound,
+    DebtChanged,
     DomainError,
     InvalidPreference,
     LLMUnavailable,
@@ -22,6 +23,10 @@ LLM_DOWN = (
     "No anoté nada; inténtalo de nuevo en un momento."
 )
 NO_ACCOUNT = "No tienes ninguna cuenta activa en esa moneda, así que no anoté nada."
+DEBT_CHANGED = (
+    "Esa deuda cambió mientras elegías (se pagó o se anuló), así que no anoté el pago. "
+    "Revísala con /deudas."
+)
 
 
 def user_message_for(exc: Exception) -> str:
@@ -32,6 +37,8 @@ def user_message_for(exc: Exception) -> str:
         return NO_RATE
     if isinstance(exc, LLMUnavailable):
         return LLM_DOWN
+    if isinstance(exc, DebtChanged):
+        return DEBT_CHANGED
     if isinstance(exc, AccountNotFound):
         return NO_ACCOUNT
     return GENERIC_ERROR

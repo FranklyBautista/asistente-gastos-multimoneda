@@ -5,7 +5,7 @@ Para quien vive con varias monedas a la vez. Le escribes a un bot de Telegram co
 - **Bot:** [@frankly_gastos_bot](https://t.me/frankly_gastos_bot) (acceso por lista blanca).
 - **Web:** <https://asistente-gastos-multimoneda.vercel.app>.
 
-> Estado: **Fase 10**, panel web. Pendiente: Fase 11, seguimiento de deudas.
+> Estado: **Fase 11**, seguimiento de deudas (rama `fase-11/deudas`). Pendiente: Fase 12, app móvil.
 
 ## Qué hace
 
@@ -16,6 +16,7 @@ Para quien vive con varias monedas a la vez. Le escribes a un bot de Telegram co
 | Responde preguntas («¿cuánto gasté en comida este mes?») con datos reales y sin cifras inventadas. | **Gráficas:** gasto por categoría y por semana, y poder adquisitivo del bolívar. |
 | Cada domingo envía un resumen semanal que incluye cuánto perdieron o ganaron tus bolívares. | **Cambios:** historial con la tasa efectiva, la de referencia y la diferencia en %. |
 | Aprende de tus correcciones («eso fue transporte»). | Las ediciones hechas en la web también le sirven al bot como ejemplos. |
+| Lleva tus deudas («le debo 20 dólares a miguel», «luisa me debe 50 mil») y las tacha cuando se pagan; pregunta de qué cuenta salió el dinero. `/deudas` muestra lo pendiente. | **Deudas:** pendientes por persona y moneda con su total, y las liquidadas tachadas. |
 
 Las tasas salen de BCV, el paralelo y Binance P2P para el Bs (cada persona elige su fuente), de ExchangeRate-API para el COP y de CoinGecko para el USDT. Se refrescan cada hora y quedan guardadas como historial.
 
@@ -28,8 +29,8 @@ Las tasas salen de BCV, el paralelo y Binance P2P para el Bs (cada persona elige
   - Categoría en 39 de 39, consultas en 29 de 29 y correcciones en 9 de 9.
 - **Pruebas:**
   - Bot: unitarias e integración con pytest.
-  - Base de datos: pgTAP sobre esquema, RLS, vinculación y panel.
-  - Web: E2E con Playwright para registro, vinculación con `/vincular`, saldos, filtros, edición, gráficas y cambios.
+  - Base de datos: pgTAP sobre esquema, RLS, vinculación, panel y deudas.
+  - Web: E2E con Playwright para registro, vinculación con `/vincular`, saldos, filtros, edición, gráficas, cambios y deudas (la liquidada aparece tachada).
   - Todo corre en el CI de GitHub Actions.
 
 ## Arquitectura
@@ -53,7 +54,7 @@ flowchart LR
     AUTH["Supabase Auth"]
   end
   subgraph Vercel["Vercel: web (Next.js 16)"]
-    WEB["panel: saldos, movimientos,<br/>gráficas, cambios"]
+    WEB["panel: saldos, movimientos,<br/>gráficas, cambios, deudas"]
   end
   U <--> WH
   D -- "rol de servicio,<br/>filtra por user_id" --> PG

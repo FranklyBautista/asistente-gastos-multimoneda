@@ -39,7 +39,7 @@ select results_eq('select telegram_id from users', 'values (5001::bigint)', 'Ana
 select is((select count(*)::int from accounts), 4, 'Ana ve sus 4 cuentas y ninguna ajena');
 select is((select count(*)::int from transactions), 1, 'Ana ve solo su movimiento');
 select is((select count(*)::int from account_balances), 4, 'la vista de saldos respeta la RLS');
-select is((select count(*)::int from categories), 8, 'Ana ve las categorías globales');
+select is((select count(*)::int from categories), 10, 'Ana ve las categorías globales');
 select ok((select count(*) from exchange_rates) >= 1, 'las tasas se pueden leer');
 
 select throws_ok('select * from link_codes', '42501', null, 'los códigos no se leen desde la web');

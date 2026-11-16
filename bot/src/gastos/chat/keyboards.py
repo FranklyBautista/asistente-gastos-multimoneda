@@ -100,3 +100,78 @@ def undo_exchange_keyboard(exchange_id: str) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="↩️ Deshacer", callback_data=UndoExchangeCallback(exchange_id=exchange_id))
     return builder.as_markup()
+
+
+# ---- Deudas (Fase 11) ----
+# Los datos de callback tienen un máximo de 64 bytes: se manda el token del pendiente y un
+# índice, no los ids completos de deudas o cuentas.
+
+
+class DebtCurrencyChoice(CallbackData, prefix="dcur"):
+    token: str
+    currency: str
+
+
+class DebtPick(CallbackData, prefix="dpick"):
+    token: str
+    index: int
+
+
+class DebtAccountPick(CallbackData, prefix="dacc"):
+    token: str
+    index: int  # -1 = «Sin movimiento»
+
+
+class UndoDebtCallback(CallbackData, prefix="undod"):
+    debt_id: str
+
+
+class UndoDebtPaymentCallback(CallbackData, prefix="undop"):
+    payment_id: str
+
+
+NO_MOVEMENT_INDEX: Final = -1
+
+
+def debt_currency_keyboard(token: str, default: Currency) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    ordered: list[Currency] = [default, *(c for c in SHORT_CURRENCY_LABELS if c != default)]
+    for currency in ordered:
+        builder.button(
+            text=SHORT_CURRENCY_LABELS[currency],
+            callback_data=DebtCurrencyChoice(token=token, currency=currency),
+        )
+    builder.adjust(4)
+    return builder.as_markup()
+
+
+def debt_pick_keyboard(token: str, labels: Iterable[str]) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for index, label in enumerate(labels):
+        builder.button(text=label, callback_data=DebtPick(token=token, index=index))
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def debt_account_keyboard(token: str, account_names: Iterable[str]) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for index, name in enumerate(account_names):
+        builder.button(text=name, callback_data=DebtAccountPick(token=token, index=index))
+    builder.button(
+        text="Sin movimiento",
+        callback_data=DebtAccountPick(token=token, index=NO_MOVEMENT_INDEX),
+    )
+    builder.adjust(2)
+    return builder.as_markup()
+
+
+def undo_debt_keyboard(debt_id: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="↩️ Deshacer", callback_data=UndoDebtCallback(debt_id=debt_id))
+    return builder.as_markup()
+
+
+def undo_debt_payment_keyboard(payment_id: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="↩️ Deshacer", callback_data=UndoDebtPaymentCallback(payment_id=payment_id))
+    return builder.as_markup()

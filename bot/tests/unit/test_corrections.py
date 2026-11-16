@@ -32,6 +32,7 @@ from gastos.services.corrections import (
     NothingToCorrect,
     as_saved,
 )
+from gastos.services.debts import DebtService
 from gastos.services.exchanges import ExchangeService
 from gastos.services.outcomes import Ask
 from gastos.services.query_tools import QueryService
@@ -39,6 +40,7 @@ from gastos.services.rates import RateService
 from gastos.services.transactions import TransactionService
 from tests.fakes import (
     FakeCorrectionStore,
+    FakeDebtStore,
     FakeExchangeStore,
     FakeExtractor,
     FakeRateSources,
@@ -242,6 +244,7 @@ def transactions_service(
         ExchangeService(FakeExchangeStore(), tx_store, rate_service),
         QueryService(FakeReportStore(), tx_store, rate_service),
         CorrectionService(store, tx_store, rate_service, clock=lambda: NOW),
+        DebtService(FakeDebtStore(), tx_store, rate_service),
         clock=lambda: NOW,
     )
 

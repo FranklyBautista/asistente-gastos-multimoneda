@@ -5,7 +5,7 @@ from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from gastos.domain.conversion import Rate
 from gastos.domain.currency import Currency
@@ -20,6 +20,7 @@ from gastos.services.weekly_summary import (
     template_text,
 )
 from tests.fakes import (
+    FakeDebtStore,
     FakeLLM,
     FakeRateSources,
     FakeRateStore,
@@ -106,6 +107,7 @@ def service(
     rates: tuple[Rate, ...] = (RATE_START, RATE_NOW),
     users: tuple[User, ...] = (USER,),
     sent: FakeSentSummaries | None = None,
+    debts: FakeDebtStore | None = None,
     clock: Callable[[], datetime] = lambda: NOW,
 ) -> tuple[WeeklySummaryService, FakeLLM]:
     llm = FakeLLM(*llm_responses)
@@ -116,6 +118,7 @@ def service(
         sent or FakeSentSummaries(),
         FakeRecipients(*users),
         send_hour=18,
+        debts=debts,
         clock=clock,
     )
     return summaries, llm
@@ -257,3 +260,16 @@ async def test_texto_demasiado_largo_se_reemplaza_por_la_plantilla() -> None:
     summaries, _ = service({"lines": ["Semana tranquila. " * 30] * 3})
     summary = await summaries.compose(USER, NOW)
     assert summary.written_by == "template"
+
+
+async def test_las_deudas_pendientes_van_aparte_y_sin_llm() -> None:
+    from gastos.domain.debt import Debt
+
+    pending = Debt(
+        uuid4(), "i_owe", "Miguel", "USD", Decimal(20), Decimal(20), "open", None, None, NOW
+    )
+    summaries, llm = service(GOOD, debts=FakeDebtStore(pending))
+    summary = await summaries.compose(USER, NOW)
+    assert summary.text.endswith("📒 Deudas pendientes: debes 20,00 USD. Detalle en /deudas.")
+    _, prompt = llm.calls[0]
+    assert "Miguel" not in prompt and "deuda" not in prompt.lower()

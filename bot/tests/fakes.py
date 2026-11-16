@@ -3,6 +3,7 @@
 from collections.abc import Sequence
 from dataclasses import replace
 from datetime import UTC, date, datetime
+from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -18,6 +19,7 @@ from gastos.domain.correction import (
     StoredTransaction,
 )
 from gastos.domain.currency import Currency, QuotedCurrency, RateSource, VesRateSource
+from gastos.domain.debt import Debt, DebtDirection, NewDebt
 from gastos.domain.exchange import NewExchange, SavedExchange
 from gastos.domain.reports import AccountBalance, CategoryTotal, CurrencyTotal, TransactionRow
 from gastos.domain.transaction import NewTransaction, SavedTransaction, TransactionKind
@@ -146,7 +148,8 @@ def make_accounts() -> list[Account]:
 
 def make_categories() -> list[Category]:
     expense = ["comida", "otros", "ocio", "salud", "servicios", "transporte"]
-    income = ["otros ingresos", "salario"]
+    expense += ["pago de deudas"]
+    income = ["otros ingresos", "salario", "cobro de deudas"]
     return [Category(uuid4(), n, "expense") for n in expense] + [
         Category(uuid4(), n, "income") for n in income
     ]
@@ -456,3 +459,108 @@ class FakeLinkStore:
         self.taken.add(code)
         self.issued.append((user_id, code, expires_at))
         return True
+
+
+class FakeDebtStore:
+    """Implementa services.debts.DebtStore en memoria, con las reglas del trigger de la base."""
+
+    def __init__(self, *debts: Debt) -> None:
+        self.debts: dict[UUID, Debt] = {d.id: d for d in debts}
+        self.inserted: list[NewDebt] = []
+        self.cancelled: set[UUID] = set()
+        # id del pago → (deuda, monto, movimiento, borrado)
+        self.payments: dict[UUID, tuple[UUID, Decimal, NewTransaction | None, bool]] = {}
+
+    def _current(self, debt: Debt) -> Debt:
+        paid = sum(
+            (
+                amount
+                for d, amount, _, deleted in self.payments.values()
+                if d == debt.id and not deleted
+            ),
+            Decimal(0),
+        )
+        remaining = debt.amount - paid
+        status = "settled" if remaining <= 0 else "partial" if remaining < debt.amount else "open"
+        return replace(debt, remaining=remaining, status=status)
+
+    async def insert(self, user_id: UUID, item: NewDebt) -> Debt:
+        self.inserted.append(item)
+        debt = Debt(
+            id=uuid4(),
+            direction=item.direction,
+            counterparty=item.counterparty,
+            currency=item.currency,
+            amount=item.amount,
+            remaining=item.amount,
+            status="open",
+            description=item.description,
+            category=item.category.name if item.category else None,
+            incurred_at=datetime(2026, 11, 10, 12, tzinfo=UTC),
+        )
+        self.debts[debt.id] = debt
+        return debt
+
+    async def list(
+        self,
+        user_id: UUID,
+        *,
+        direction: DebtDirection | None = None,
+        include_settled: bool = False,
+    ) -> list[Debt]:
+        current = [self._current(d) for k, d in self.debts.items() if k not in self.cancelled]
+        return [
+            d
+            for d in current
+            if (direction is None or d.direction == direction)
+            and (include_settled or d.status != "settled")
+        ]
+
+    async def get(self, user_id: UUID, debt_id: UUID) -> Debt | None:
+        if debt_id not in self.debts or debt_id in self.cancelled:
+            return None
+        return self._current(self.debts[debt_id])
+
+    async def pay(
+        self,
+        user_id: UUID,
+        debt: Debt,
+        amount: Decimal,
+        movement: NewTransaction | None,
+        raw_text: str,
+    ) -> tuple[UUID, SavedTransaction | None, Debt]:
+        from gastos.domain.errors import DebtChanged
+
+        current = await self.get(user_id, debt.id)
+        if current is None or amount > current.remaining:
+            raise DebtChanged("cambió")
+        payment_id = uuid4()
+        self.payments[payment_id] = (debt.id, amount, movement, False)
+        saved = None
+        if movement is not None:
+            saved = SavedTransaction(
+                id=uuid4(),
+                kind=movement.kind,
+                amount=movement.amount,
+                currency=movement.currency,
+                category=movement.category.name,
+                description=movement.description,
+                account_name=movement.account.name,
+                snapshot=movement.snapshot,
+                occurred_at=datetime.now(UTC),
+            )
+        return payment_id, saved, self._current(debt)
+
+    async def cancel(self, user_id: UUID, debt_id: UUID) -> int:
+        has_payments = any(d == debt_id and not x for d, _, _, x in self.payments.values())
+        if debt_id not in self.debts or debt_id in self.cancelled or has_payments:
+            return 0
+        self.cancelled.add(debt_id)
+        return 1
+
+    async def undo_payment(self, user_id: UUID, payment_id: UUID) -> int:
+        if payment_id not in self.payments or self.payments[payment_id][3]:
+            return 0
+        d, amount, movement, _ = self.payments[payment_id]
+        self.payments[payment_id] = (d, amount, movement, True)
+        return 1

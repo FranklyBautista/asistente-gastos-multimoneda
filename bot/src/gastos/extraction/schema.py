@@ -65,7 +65,9 @@ class ParsedExchange(LLMOutput):
 class ParsedQuery(LLMOutput):
     """Una pregunta sobre sus finanzas: qué herramienta usar y con qué parámetros."""
 
-    tool: Literal["spending_by_category", "totals", "account_balances", "list_transactions"]
+    tool: Literal[
+        "spending_by_category", "totals", "account_balances", "list_transactions", "list_debts"
+    ]
     period: Period | None = Field(
         default=None, description='Periodo de la lista; "month" con month para un mes concreto'
     )
@@ -79,6 +81,15 @@ class ParsedQuery(LLMOutput):
     in_usd: bool = Field(default=False, description="true solo si pide el total en dólares")
     limit: int | None = Field(
         default=None, ge=1, le=20, description="Cuántos movimientos (list_transactions)"
+    )
+    direction: Literal["i_owe", "owed_to_me"] | None = Field(
+        default=None, description="list_debts: lo que debe (i_owe) o lo que le deben; null = ambas"
+    )
+    counterparty: str | None = Field(
+        default=None, description="list_debts: solo si pregunta por una persona"
+    )
+    include_settled: bool = Field(
+        default=False, description="list_debts: true solo si pide también las ya pagadas"
     )
 
 
@@ -97,13 +108,60 @@ class ParsedCorrection(LLMOutput):
     )
 
 
+DebtDirection = Literal["i_owe", "owed_to_me"]
+
+
+class ParsedDebt(LLMOutput):
+    """Una deuda nueva: "le debo 20 dólares a Miguel" o "Luisa me debe 50 mil"."""
+
+    direction: DebtDirection = Field(
+        description="i_owe si el usuario le debe a alguien; owed_to_me si alguien le debe a él"
+    )
+    counterparty: str = Field(description='La otra persona, tal como la escribió: "Miguel"')
+    amount: float = Field(gt=0, description='Ya normalizado: "50 mil" -> 50000')
+    currency: Currency | None = Field(
+        default=None, description="null si el mensaje no deja clara la moneda"
+    )
+    currency_confidence: float = Field(ge=0, le=1)
+    category: str | None = Field(
+        default=None, description="Categoría de gasto de la lista según lo que fue, o null"
+    )
+    description: str | None = Field(
+        default=None, description='Qué fue, en minúsculas ("almuerzo"); null si no lo dice'
+    )
+
+
+class ParsedDebtPayment(LLMOutput):
+    """Un pago de una deuda: "le pagué 10 a Miguel" o "Luisa me pagó"."""
+
+    direction: DebtDirection = Field(
+        description="i_owe si el usuario pagó lo que debía; owed_to_me si le pagaron a él"
+    )
+    counterparty: str = Field(description="La otra persona, tal como la escribió")
+    amount: float | None = Field(
+        default=None, gt=0, description="null si no dice el monto (paga todo lo pendiente)"
+    )
+    currency: Currency | None = Field(default=None, description="Solo si la dice")
+    account_hint: str | None = Field(
+        default=None, description="Cuenta de donde salió o a donde entró el dinero, si la dice"
+    )
+
+
 class Clarification(LLMOutput):
     field: Literal["currency", "amount", "account", "kind"]
     question: str = Field(description="En español, una línea")
 
 
 class Extraction(LLMOutput):
-    intent: Literal["log_transactions", "log_exchange", "query", "correction", "other"]
+    intent: Literal[
+        "log_transactions",
+        "log_exchange",
+        "log_debt",
+        "settle_debt",
+        "query",
+        "correction",
+        "other",
+    ]
     transactions: list[ParsedTransaction] = Field(
         default_factory=list, description="Vacío si intent no es log_transactions"
     )
@@ -113,6 +171,10 @@ class Extraction(LLMOutput):
     )
     correction: ParsedCorrection | None = Field(
         default=None, description="Solo con intent correction"
+    )
+    debt: ParsedDebt | None = Field(default=None, description="Solo con intent log_debt")
+    debt_payment: ParsedDebtPayment | None = Field(
+        default=None, description="Solo con intent settle_debt"
     )
     clarification: Clarification | None = None
     confidence: float = Field(ge=0, le=1)

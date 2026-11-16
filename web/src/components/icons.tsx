@@ -188,3 +188,9 @@ export function CategoryIcon({ name, ...p }: IconProps & { name: string | null }
   if (/sueldo|salario|trabajo|cliente|ingreso|freelance/.test(n)) return <BriefcaseIcon {...p} />;
   return <TagIcon {...p} />;
 }
+export const LedgerIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M5 4a2 2 0 0 1 2-2h12v18H7a2 2 0 0 0-2 2z" />
+    <path d="M5 22V4M9 7h6M9 11h6" />
+  </Svg>
+);

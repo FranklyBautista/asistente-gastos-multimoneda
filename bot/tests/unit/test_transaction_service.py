@@ -14,6 +14,7 @@ from gastos.domain.currency import QuotedCurrency, RateSource
 from gastos.domain.errors import AccountNotFound, RateUnavailable
 from gastos.extraction.schema import Extraction
 from gastos.services.corrections import CorrectionService
+from gastos.services.debts import DebtService
 from gastos.services.exchanges import ExchangeService
 from gastos.services.outcomes import Ask, NotATransaction
 from gastos.services.query_tools import QueryService
@@ -21,6 +22,7 @@ from gastos.services.rates import RateService
 from gastos.services.transactions import NeedsCurrency, Saved, TransactionService
 from tests.fakes import (
     FakeCorrectionStore,
+    FakeDebtStore,
     FakeExchangeStore,
     FakeExtractor,
     FakeRateSources,
@@ -67,7 +69,10 @@ def build(
     exchanges = ExchangeService(FakeExchangeStore(), store, rates)
     queries = QueryService(FakeReportStore(), store, rates)
     corrections = CorrectionService(FakeCorrectionStore(), store, rates)
-    return TransactionService(store, extractor, rates, exchanges, queries, corrections, clock=clock)
+    debts = DebtService(FakeDebtStore(), store, rates, clock=clock)
+    return TransactionService(
+        store, extractor, rates, exchanges, queries, corrections, debts, clock=clock
+    )
 
 
 def service(

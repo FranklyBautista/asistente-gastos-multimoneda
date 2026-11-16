@@ -9,12 +9,15 @@ from zoneinfo import ZoneInfo
 import structlog
 
 from gastos.domain.correction import CorrectionDraft, CorrectionExample
+from gastos.domain.debt import DebtDraft, PaymentDraft, clean_counterparty
 from gastos.domain.exchange import ExchangeDraft
 from gastos.domain.transaction import TransactionDraft
 from gastos.extraction.prompt import PROMPT_VERSION, system_prompt, user_prompt
 from gastos.extraction.schema import (
     Extraction,
     ParsedCorrection,
+    ParsedDebt,
+    ParsedDebtPayment,
     ParsedExchange,
     ParsedTransaction,
 )
@@ -57,6 +60,8 @@ class Extractor:
             transactions=len(extraction.transactions),
             exchange=extraction.exchange is not None,
             correction=extraction.correction is not None,
+            debt=extraction.debt is not None,
+            debt_payment=extraction.debt_payment is not None,
             learned_from=len(corrections),
             # Herramienta y parámetros elegidos: sin datos del usuario, solo la decisión.
             query=extraction.query.model_dump(exclude_none=True, exclude_defaults=True)
@@ -102,6 +107,30 @@ def to_correction_draft(parsed: ParsedCorrection) -> CorrectionDraft:
         kind=parsed.kind,
         account_hint=parsed.account_hint,
         target_hint=parsed.target_hint,
+    )
+
+
+def to_debt_draft(parsed: ParsedDebt, categories: Categories) -> DebtDraft:
+    """Deuda del LLM al dominio; la categoría solo si es una de gasto de la lista."""
+    description = (parsed.description or "").strip()[:200] or None
+    return DebtDraft(
+        direction=parsed.direction,
+        counterparty=clean_counterparty(parsed.counterparty),
+        amount=_to_decimal(parsed.amount),
+        currency=parsed.currency,
+        currency_confidence=parsed.currency_confidence,
+        category=parsed.category if parsed.category in categories.expense else None,
+        description=description,
+    )
+
+
+def to_payment_draft(parsed: ParsedDebtPayment) -> PaymentDraft:
+    return PaymentDraft(
+        direction=parsed.direction,
+        counterparty=clean_counterparty(parsed.counterparty),
+        amount=_optional_decimal(parsed.amount),
+        currency=parsed.currency,
+        account_hint=parsed.account_hint,
     )
 
 
