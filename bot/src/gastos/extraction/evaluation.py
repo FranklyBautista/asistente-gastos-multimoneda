@@ -31,6 +31,9 @@ CHECKS: Final = (
     "cambio",
     "consulta",
     "corrección",
+    "dirección de deuda",
+    "deuda",
+    "pago de deuda",
 )
 
 
@@ -138,11 +141,24 @@ def score_case(case: Mapping[str, Any], extraction: Extraction, now_local: datet
         _score_transactions(
             result, case.get("transactions", []), extraction.transactions, now_local
         )
-    for key, name in (("exchange", "cambio"), ("query", "consulta"), ("correction", "corrección")):
+    for key, name in (
+        ("exchange", "cambio"),
+        ("query", "consulta"),
+        ("correction", "corrección"),
+        ("debt", "deuda"),
+        ("debt_payment", "pago de deuda"),
+    ):
         if key in case:
             parsed = getattr(extraction, key)
             got = parsed.model_dump() if parsed is not None else None
             _compare_fields(result, name, case[key], got)
+    # "Debo" frente a "me debe" es el error más caro de las deudas: se mide aparte.
+    for key in ("debt", "debt_payment"):
+        if key in case and "direction" in case[key]:
+            parsed = getattr(extraction, key)
+            have = parsed.direction if parsed is not None else None
+            want = case[key]["direction"]
+            result.check("dirección de deuda", have == want, f"esperaba {want}, vino {have}")
     return result
 
 

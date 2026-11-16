@@ -5,7 +5,7 @@ from collections.abc import Iterable
 from aiogram import Dispatcher
 
 from gastos.chat.errors import on_error
-from gastos.chat.handlers import general, linking, onboarding, rates, summary, transactions
+from gastos.chat.handlers import debts, general, linking, onboarding, rates, summary, transactions
 from gastos.chat.middlewares import (
     AllowlistMiddleware,
     DeduplicateMiddleware,
@@ -14,6 +14,7 @@ from gastos.chat.middlewares import (
     RateLimitMiddleware,
     UserMiddleware,
 )
+from gastos.services.debts import DebtService
 from gastos.services.linking import LinkService
 from gastos.services.rates import RateService
 from gastos.services.transactions import TransactionService
@@ -30,11 +31,12 @@ def build_dispatcher(
     summary_service: WeeklySummaryService,
     updates: UpdateLedger,
     link_service: LinkService,
+    debt_service: DebtService,
     *,
     messages_per_minute: int,
     web_url: str | None = None,
 ) -> Dispatcher:
-    # Los kwargs del Dispatcher (`users`, `rates`, `transactions`, `summaries`, `links` y
+    # Los kwargs del Dispatcher (`users`, `rates`, `transactions`, `summaries`, `links`, `debts` y
     # `web_url`) llegan a los handlers como argumentos.
     dp = Dispatcher(
         users=users,
@@ -42,6 +44,7 @@ def build_dispatcher(
         transactions=transaction_service,
         summaries=summary_service,
         links=link_service,
+        debts=debt_service,
         web_url=web_url,
     )
     # Orden: contexto de logs → lista blanca → orden por persona → repetidos → usuario. Lo no
@@ -61,6 +64,7 @@ def build_dispatcher(
         rates.router,
         summary.router,
         linking.router,
+        debts.router,
         transactions.router,
         general.router,
     )

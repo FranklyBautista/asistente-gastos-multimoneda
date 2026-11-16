@@ -1,0 +1,91 @@
+{
+  "prompt_version": "extraccion-v6",
+  "models": [
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.8-flash"
+  ],
+  "date": "2026-11-16T01:28:54+00:00",
+  "cases": 89,
+  "llm_errors": [
+    "usd-01",
+    "usd-04",
+    "ex-02",
+    "fix-05"
+  ],
+  "metrics": {
+    "intención": {
+      "passed": 89,
+      "total": 89
+    },
+    "cantidad de movimientos": {
+      "passed": 49,
+      "total": 49
+    },
+    "tipo": {
+      "passed": 52,
+      "total": 52
+    },
+    "monto": {
+      "passed": 52,
+      "total": 52
+    },
+    "moneda": {
+      "passed": 52,
+      "total": 52
+    },
+    "moneda clara anotada": {
+      "passed": 37,
+      "total": 37
+    },
+    "moneda dudosa preguntada": {
+      "passed": 15,
+      "total": 15
+    },
+    "categoría": {
+      "passed": 40,
+      "total": 40
+    },
+    "fecha": {
+      "passed": 1,
+      "total": 1
+    },
+    "cambio": {
+      "passed": 17,
+      "total": 18
+    },
+    "consulta": {
+      "passed": 36,
+      "total": 36
+    },
+    "corrección": {
+      "passed": 7,
+      "total": 7
+    },
+    "dirección de deuda": {
+      "passed": 15,
+      "total": 15
+    },
+    "deuda": {
+      "passed": 33,
+      "total": 33
+    },
+    "pago de deuda": {
+      "passed": 24,
+      "total": 24
+    }
+  },
+  "exact": {
+    "passed": 88,
+    "total": 89
+  },
+  "failures": [
+    {
+      "id": "ex-06",
+      "text": "vendí 30 usdt en binance p2p a 1.010",
+      "failed": [
+        "cambio: to_currency esperaba 'VES', vino None"
+      ]
+    }
+  ]
+}

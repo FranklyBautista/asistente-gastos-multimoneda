@@ -8,11 +8,55 @@ from datetime import datetime
 from typing import Any, cast
 from uuid import UUID
 
+from psycopg import AsyncConnection
 from psycopg_pool import AsyncConnectionPool
 
 from gastos.domain.account import Account, AccountKind, Category
 from gastos.domain.currency import Currency
 from gastos.domain.transaction import NewTransaction, SavedTransaction
+
+
+async def insert_transaction(
+    conn: AsyncConnection[Any], user_id: UUID, item: NewTransaction
+) -> SavedTransaction:
+    """Inserta un movimiento en la conexión dada, para que lo use la transacción SQL de afuera.
+
+    También la usa el pago de deudas (db.DebtRepository): gasto y pago se guardan juntos.
+    """
+    cur = await conn.execute(
+        "insert into transactions (user_id, account_id, currency, kind, amount, "
+        "category_id, description, occurred_at, usd_per_unit, rate_source, "
+        "amount_usd, raw_text, parse_confidence) "
+        "values (%s, %s, %s, %s, %s, %s, %s, coalesce(%s, now()), %s, %s, %s, %s, %s) "
+        "returning id, occurred_at",
+        (
+            user_id,
+            item.account.id,
+            item.currency,
+            item.kind,
+            item.amount,
+            item.category.id,
+            item.description,
+            item.occurred_at,
+            item.snapshot.usd_per_unit,
+            item.snapshot.rate_source,
+            item.snapshot.amount_usd,
+            item.raw_text,
+            round(item.parse_confidence, 2),
+        ),
+    )
+    row = cast(tuple[Any, ...], await cur.fetchone())
+    return SavedTransaction(
+        id=cast(UUID, row[0]),
+        kind=item.kind,
+        amount=item.amount,
+        currency=item.currency,
+        category=item.category.name,
+        description=item.description,
+        account_name=item.account.name,
+        snapshot=item.snapshot,
+        occurred_at=cast(datetime, row[1]),
+    )
 
 
 class TransactionRepository:
@@ -57,46 +101,8 @@ class TransactionRepository:
 
         Al compartir transacción comparten `created_at` (now()), que es lo que usa `undo_batch`.
         """
-        saved: list[SavedTransaction] = []
         async with self._pool.connection() as conn, conn.transaction():
-            for item in items:
-                cur = await conn.execute(
-                    "insert into transactions (user_id, account_id, currency, kind, amount, "
-                    "category_id, description, occurred_at, usd_per_unit, rate_source, "
-                    "amount_usd, raw_text, parse_confidence) "
-                    "values (%s, %s, %s, %s, %s, %s, %s, coalesce(%s, now()), %s, %s, %s, %s, %s) "
-                    "returning id, occurred_at",
-                    (
-                        user_id,
-                        item.account.id,
-                        item.currency,
-                        item.kind,
-                        item.amount,
-                        item.category.id,
-                        item.description,
-                        item.occurred_at,
-                        item.snapshot.usd_per_unit,
-                        item.snapshot.rate_source,
-                        item.snapshot.amount_usd,
-                        item.raw_text,
-                        round(item.parse_confidence, 2),
-                    ),
-                )
-                row = cast(tuple[Any, ...], await cur.fetchone())
-                saved.append(
-                    SavedTransaction(
-                        id=cast(UUID, row[0]),
-                        kind=item.kind,
-                        amount=item.amount,
-                        currency=item.currency,
-                        category=item.category.name,
-                        description=item.description,
-                        account_name=item.account.name,
-                        snapshot=item.snapshot,
-                        occurred_at=cast(datetime, row[1]),
-                    )
-                )
-        return saved
+            return [await insert_transaction(conn, user_id, item) for item in items]
 
     async def undo_batch(self, user_id: UUID, transaction_id: UUID) -> int:
         """Borra (lógicamente) el movimiento y los que se guardaron con él en el mismo mensaje.

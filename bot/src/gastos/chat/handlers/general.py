@@ -24,6 +24,9 @@ HELP = (
     "98.500 bs». Te digo cómo te fue frente a la tasa de referencia.\n\n"
     "También puedes preguntarme: «¿cuánto gasté esta semana?», «¿en qué se me fue la plata "
     "el mes pasado?», «¿cuánto tengo en dólares?» o «mis últimos 5 gastos».\n\n"
+    "Para deudas: «le debo 20 dólares a miguel» o «luisa me debe 50 mil». Cuando se pague, "
+    "«le pagué a miguel» o «luisa me pagó 20 mil» la tacha; te pregunto de qué cuenta salió."
+    "\n\n"
     "Si me equivoco, corrígeme: «eso fue transporte» o «eran 20 mil pesos». "
     "Lo recuerdo para la próxima vez."
 )

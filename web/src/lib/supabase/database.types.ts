@@ -71,6 +71,70 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"debt_payments": {
+                  Row: {
+                    "amount": number,"created_at": string,"currency": string,"debt_id": string,"deleted_at": string | null,"id": string,"paid_at": string,"raw_text": string | null,"transaction_id": string | null,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount": number,"created_at"?: string,"currency": string,"debt_id": string,"deleted_at"?: string | null,"id"?: string,"paid_at"?: string,"raw_text"?: string | null,"transaction_id"?: string | null,"user_id": string
+                  }
+                  Update: {
+                    "amount"?: number,"created_at"?: string,"currency"?: string,"debt_id"?: string,"deleted_at"?: string | null,"id"?: string,"paid_at"?: string,"raw_text"?: string | null,"transaction_id"?: string | null,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "debt_payments_debt_id_user_id_currency_fkey"
+      columns: ["debt_id","user_id","currency"]
+isOneToOne: false
+      referencedRelation: "debt_balances"
+      referencedColumns: ["debt_id","user_id","currency"]
+    },{
+      foreignKeyName: "debt_payments_debt_id_user_id_currency_fkey"
+      columns: ["debt_id","user_id","currency"]
+isOneToOne: false
+      referencedRelation: "debts"
+      referencedColumns: ["id","user_id","currency"]
+    },{
+      foreignKeyName: "debt_payments_transaction_id_fkey"
+      columns: ["transaction_id"]
+isOneToOne: false
+      referencedRelation: "transactions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "debt_payments_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "users"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"debts": {
+                  Row: {
+                    "amount": number,"amount_usd": number,"cancelled_at": string | null,"category_id": string | null,"counterparty": string,"counterparty_key": string | null,"created_at": string,"currency": string,"description": string | null,"direction": string,"id": string,"incurred_at": string,"rate_source": string,"raw_text": string | null,"usd_per_unit": number,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount": number,"amount_usd": number,"cancelled_at"?: string | null,"category_id"?: string | null,"counterparty": string,"counterparty_key"?: never,"created_at"?: string,"currency": string,"description"?: string | null,"direction": string,"id"?: string,"incurred_at"?: string,"rate_source": string,"raw_text"?: string | null,"usd_per_unit": number,"user_id": string
+                  }
+                  Update: {
+                    "amount"?: number,"amount_usd"?: number,"cancelled_at"?: string | null,"category_id"?: string | null,"counterparty"?: string,"counterparty_key"?: never,"created_at"?: string,"currency"?: string,"description"?: string | null,"direction"?: string,"id"?: string,"incurred_at"?: string,"rate_source"?: string,"raw_text"?: string | null,"usd_per_unit"?: number,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "debts_category_id_fkey"
+      columns: ["category_id"]
+isOneToOne: false
+      referencedRelation: "categories"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "debts_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "users"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"exchange_rates": {
                   Row: {
                     "currency": string,"fetched_at": string,"id": number,"source": string,"usd_per_unit": number
@@ -265,6 +329,26 @@ isOneToOne: false
                   ComputedFields: never
                   Relationships: [
                     
+                  ]
+                },"debt_balances": {
+                  Row: {
+                    "amount": number | null,"amount_usd": number | null,"category_id": string | null,"counterparty": string | null,"counterparty_key": string | null,"currency": string | null,"debt_id": string | null,"description": string | null,"direction": string | null,"incurred_at": string | null,"last_paid_at": string | null,"remaining": number | null,"status": string | null,"user_id": string | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    {
+      foreignKeyName: "debts_category_id_fkey"
+      columns: ["category_id"]
+isOneToOne: false
+      referencedRelation: "categories"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "debts_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "users"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"exchange_history": {
                   Row: {

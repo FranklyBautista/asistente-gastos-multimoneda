@@ -50,7 +50,7 @@ class StoredTransaction:
         return self.account.currency
 
 
-LastActionKind = Literal["transactions", "undone", "exchange", "none"]
+LastActionKind = Literal["transactions", "undone", "exchange", "debt", "none"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,6 +60,7 @@ class LastBatch:
     - `transactions`: un mensaje con movimientos vigentes; van en `transactions`.
     - `undone`: el último mensaje se deshizo; corregir otro anterior sería adivinar.
     - `exchange`: lo último fue un cambio de moneda, que no se corrige por mensaje.
+    - `debt`: lo último fue una deuda o un pago de deuda, que se deshacen con su botón.
     - `none`: nunca anotó nada.
     """
 

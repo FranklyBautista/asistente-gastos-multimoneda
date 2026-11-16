@@ -14,6 +14,7 @@ from aiogram.utils.chat_action import ChatActionSender
 
 from gastos.chat.answers import CAN_ANSWER, answer_text
 from gastos.chat.formatting import SYMBOLS, format_age, format_money, format_number
+from gastos.chat.handlers.debts import reply_debt
 from gastos.chat.handlers.rates import LABELS
 from gastos.chat.keyboards import (
     CurrencyChoice,
@@ -30,6 +31,15 @@ from gastos.domain.currency import Currency, parse_currency
 from gastos.domain.transaction import SavedTransaction, TransactionDraft
 from gastos.domain.user import User
 from gastos.services.corrections import Corrected, NoChange, NothingReason, NothingToCorrect
+from gastos.services.debts import (
+    ChooseAccount,
+    ChooseDebt,
+    DebtList,
+    DebtSaved,
+    NeedsDebtCurrency,
+    NoMatchingDebt,
+    PaymentSaved,
+)
 from gastos.services.exchanges import ExchangeSaved
 from gastos.services.outcomes import Ask, NotATransaction
 from gastos.services.query_tools import (
@@ -131,6 +141,10 @@ NOTHING_TO_CORRECT: dict[NothingReason, str] = {
     "exchange": (
         "Lo último que anotaste fue un cambio de moneda, y esos no se corrigen por mensaje: "
         "tócale Deshacer y escríbelo de nuevo."
+    ),
+    "debt": (
+        "Lo último que anotaste fue una deuda o un pago de deuda, y esos no se corrigen por "
+        "mensaje: tócale Deshacer y escríbelo de nuevo."
     ),
     "expired": (
         "Tu último movimiento tiene más de 24 horas. Para corregirlo, edítalo en la web "
@@ -288,6 +302,16 @@ async def reply(message: Message, outcome: Outcome, user: User) -> None:
             )
         case Corrected() | NoChange():
             await message.answer(correction_text(outcome, user, datetime.now(UTC)))
+        case (
+            DebtSaved()
+            | NeedsDebtCurrency()
+            | NoMatchingDebt()
+            | ChooseDebt()
+            | ChooseAccount()
+            | PaymentSaved()
+            | DebtList()
+        ):
+            await reply_debt(message, outcome, user)
         case NothingToCorrect(reason=reason):
             await message.answer(NOTHING_TO_CORRECT[reason])
         case Ask(question=question):

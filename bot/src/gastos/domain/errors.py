@@ -33,3 +33,7 @@ class AccountNotFound(DomainError):
     def __init__(self, currency: str) -> None:
         super().__init__(f"no hay cuenta activa en {currency}")
         self.currency = currency
+
+
+class DebtChanged(DomainError):
+    """La deuda se pagó, se anuló o ya no admite ese monto mientras el usuario elegía."""

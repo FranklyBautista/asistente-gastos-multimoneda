@@ -3,19 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { HomeIcon, ListIcon, PieIcon, PlusIcon, SwapIcon } from "@/components/icons";
+import { HomeIcon, LedgerIcon, ListIcon, PieIcon, PlusIcon, SwapIcon } from "@/components/icons";
 
 const LINKS = [
   { href: "/", label: "Inicio", Icon: HomeIcon },
   { href: "/movimientos", label: "Movimientos", Icon: ListIcon },
   { href: "/graficas", label: "Gráficas", Icon: PieIcon },
   { href: "/cambios", label: "Cambios", Icon: SwapIcon },
+  { href: "/deudas", label: "Deudas", Icon: LedgerIcon },
 ] as const;
 
 /** Usuario del bot (sin @) para el botón de anotar; sin él, el botón no aparece. */
 const BOT = process.env.NEXT_PUBLIC_TELEGRAM_BOT?.replace(/^@/, "");
 
-/** Barra flotante de abajo: las cuatro secciones y el atajo para anotar en Telegram. */
+/** Barra flotante de abajo: las cinco secciones y el atajo para anotar en Telegram. */
 export function PanelNav() {
   const path = usePathname();
   return (

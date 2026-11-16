@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field
 
 from gastos.domain.conversion import Rate, units_per_usd
 from gastos.domain.currency import Currency, QuotedCurrency
+from gastos.domain.debt import Debt, DebtDirection, pending_totals
 from gastos.domain.errors import LLMUnavailable, RateUnavailable
 from gastos.domain.metrics import (
     BolivarPower,
@@ -110,6 +111,18 @@ class SentSummaries(Protocol):
 
     async def claim(self, user_id: UUID, week_start: date) -> bool: ...
     async def release(self, user_id: UUID, week_start: date) -> None: ...
+
+
+class PendingDebts(Protocol):
+    """Lo implementa db.DebtRepository (Fase 11)."""
+
+    async def list(
+        self,
+        user_id: UUID,
+        *,
+        direction: DebtDirection | None = None,
+        include_settled: bool = False,
+    ) -> list[Debt]: ...
 
 
 class Recipients(Protocol):
@@ -230,6 +243,24 @@ def template_text(m: WeeklyMetrics) -> str:
     return "\n".join(sentence for _, sentence in facts(m))
 
 
+def debts_section(debts: list[Debt]) -> str | None:
+    """«Deudas pendientes» (Fase 11): lo que debes y te deben, por moneda original.
+
+    Va fuera del texto del LLM, como plantilla fija: estas cifras no pasan por el modelo.
+    """
+    totals = pending_totals(debts)
+    if not totals:
+        return None
+    parts: list[str] = []
+    labels: tuple[tuple[DebtDirection, str], ...] = (("i_owe", "debes"), ("owed_to_me", "te deben"))
+    for direction, label in labels:
+        by_currency = totals.get(direction)
+        if by_currency:
+            amounts = " · ".join(format_money(a, c) for c, a in by_currency.items())
+            parts.append(f"{label} {amounts}")
+    return f"📒 Deudas pendientes: {'; '.join(parts)}. Detalle en /deudas."
+
+
 def _stale_note(current: CurrentRate | None, now: datetime) -> str | None:
     if current is None or not current.stale:
         return None
@@ -247,8 +278,10 @@ class WeeklySummaryService:
         recipients: Recipients,
         *,
         send_hour: int = 18,
+        debts: PendingDebts | None = None,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
+        self._debts = debts
         self._reports = reports
         self._rates = rates
         self._llm = llm
@@ -269,6 +302,10 @@ class WeeklySummaryService:
             if written is not None:
                 body, written_by = written, "llm"
         parts = [head, body]
+        if self._debts is not None:
+            section = debts_section(await self._debts.list(user.id))
+            if section:
+                parts.append(section)
         note = _stale_note(current_ves, now)
         if note:
             parts.append(note)
