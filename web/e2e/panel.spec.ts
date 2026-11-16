@@ -145,8 +145,9 @@ test("saldos, movimientos con edición, gráficas y cambios", async ({ page }) =
   const list = shown(page.getByRole("list", { name: "Movimientos" }));
   await expect(list.getByRole("listitem")).toHaveCount(2);
 
-  await shown(page.getByLabel("Moneda")).selectOption("VES");
-  await shown(page.getByRole("button", { name: "Filtrar" })).click();
+  await shown(page.getByRole("navigation", { name: "Moneda" }))
+    .getByRole("link", { name: "Bs", exact: true })
+    .click();
   await expect(page).toHaveURL(/moneda=VES/);
   await expect(
     shown(page.getByRole("list", { name: "Movimientos" })).getByRole("listitem"),
@@ -159,7 +160,7 @@ test("saldos, movimientos con edición, gráficas y cambios", async ({ page }) =
   await onPage(page, /\/movimientos\/editar\?id=/, "Editar movimiento");
   await expect(shown(page.getByText("«gasté 15 en el almuerzo»"))).toBeVisible();
   await shown(page.getByLabel("Monto")).fill("20");
-  await shown(page.getByLabel("Categoría")).selectOption({ label: "ocio" });
+  await shown(page.getByRole("radio", { name: "ocio" })).check();
   await shown(page.getByRole("button", { name: "Guardar cambios" })).click();
 
   await onPage(page, /\/movimientos\?editado=2$/, "Movimientos");

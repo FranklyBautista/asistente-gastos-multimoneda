@@ -1,33 +1,84 @@
 @import "tailwindcss";
 
+/*
+ * Tema único oscuro (rediseño): negro con brillo verde, tarjetas de vidrio y verde lima
+ * como acento. Contrastes: texto secundario #A3B8A6 y terciario #8FA693 pasan 4.5:1 sobre
+ * las superficies; sobre el lima siempre va texto #072B0E.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  /* Gráficas: color de la serie validado (dataviz) para cada fondo; texto y rejilla neutros. */
-  --chart-mark: #047857;
-  --chart-grid: #e4e4e7;
-  --chart-ink: #71717a;
+  color-scheme: dark;
+  --background: #050a06;
+  --foreground: #eef6ef;
+  /* Gráficas: serie en lima, texto y rejilla neutros. */
+  --chart-mark: #8dfb86;
+  --chart-grid: rgba(150, 255, 160, 0.12);
+  --chart-ink: #a3b8a6;
+  --chart-tooltip: #0c170e;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --chart-mark: #059669;
-    --chart-grid: #27272a;
-    --chart-ink: #a1a1aa;
-  }
+  --color-muted: #a3b8a6;
+  --color-faint: #8fa693;
+  --color-lime: #8dfb86;
+  --color-lime-soft: #b8ffb0;
+  --color-on-lime: #072b0e;
+  --color-danger: #ff8a82;
+  --color-warn: #f5c451;
+  --color-field: #070e08;
+  --color-chip: #16301b;
+  --color-line: rgba(150, 255, 160, 0.12);
+  --font-sans: var(--font-jakarta);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+/* El brillo verde de arriba, fijo detrás de todo. */
+.app-glow {
+  background: radial-gradient(130% 55% at 50% -5%, #22502a 0%, #0c1a0f 48%, #050a06 100%) no-repeat;
+  background-size: 100% 720px;
+  background-color: var(--background);
+}
+
+@utility glass {
+  background: linear-gradient(180deg, rgba(26, 46, 30, 0.85), rgba(10, 20, 12, 0.9));
+  border: 1px solid rgba(150, 255, 160, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+@utility hero-lime {
+  background: linear-gradient(140deg, #c2ffae 0%, #8dfb86 45%, #5be070 100%);
+  color: #072b0e;
+  box-shadow:
+    0 18px 50px -12px rgba(110, 240, 120, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+@utility btn-lime {
+  background: linear-gradient(140deg, #c2ffae, #7bf27a 60%, #5be070);
+  color: #072b0e;
+  box-shadow: 0 12px 30px -10px rgba(110, 240, 120, 0.6);
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid #8dfb86;
+  outline-offset: 2px;
+}
+
+select option {
+  background: #0c170e;
+  color: #eef6ef;
 }
