@@ -11,10 +11,11 @@ from gastos.domain.currency import Currency, VesRateSource
 from gastos.domain.user import User
 
 _COLUMNS = sql.SQL(
-    "id, telegram_id, display_name, timezone, default_currency, ves_rate_source, onboarded_at"
+    "id, telegram_id, display_name, timezone, default_currency, ves_rate_source, onboarded_at, "
+    "context_replies"
 )
 # Columnas que acepta `_update`; evita componer SQL con nombres arbitrarios.
-_UPDATABLE = frozenset({"default_currency", "ves_rate_source"})
+_UPDATABLE = frozenset({"default_currency", "ves_rate_source", "context_replies"})
 
 
 def _to_user(row: tuple[Any, ...]) -> User:
@@ -26,6 +27,7 @@ def _to_user(row: tuple[Any, ...]) -> User:
         default_currency=cast(Currency, row[4]),
         ves_rate_source=cast(VesRateSource, row[5]),
         onboarded_at=cast(datetime | None, row[6]),
+        context_replies=cast(bool, row[7]),
     )
 
 
@@ -73,6 +75,9 @@ class UserRepository:
     async def set_ves_rate_source(self, user_id: UUID, source: VesRateSource) -> User:
         return await self._update(user_id, "ves_rate_source", source)
 
+    async def set_context_replies(self, user_id: UUID, enabled: bool) -> User:
+        return await self._update(user_id, "context_replies", enabled)
+
     async def complete_onboarding(self, user_id: UUID, timezone: str) -> User:
         """Guarda la zona horaria y marca el onboarding (conserva la primera fecha)."""
         query = sql.SQL(
@@ -81,7 +86,7 @@ class UserRepository:
         ).format(_COLUMNS)
         return await self._fetch_one(query, (timezone, user_id))
 
-    async def _update(self, user_id: UUID, column: str, value: str) -> User:
+    async def _update(self, user_id: UUID, column: str, value: str | bool) -> User:
         if column not in _UPDATABLE:
             raise ValueError(f"columna no actualizable: {column}")
         query = sql.SQL("update users set {} = %s where id = %s returning {}").format(

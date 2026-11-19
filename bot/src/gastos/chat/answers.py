@@ -10,6 +10,7 @@ from typing import Final
 from zoneinfo import ZoneInfo
 
 from gastos.chat.formatting import SYMBOLS, format_age, format_money
+from gastos.chat.handlers.budgets import runway_text
 from gastos.chat.handlers.rates import LABELS
 from gastos.domain.currency import Currency
 from gastos.domain.periods import DateRange, Period
@@ -18,6 +19,7 @@ from gastos.domain.user import User
 from gastos.services.query_tools import (
     BalancesAnswer,
     QueryAnswer,
+    RunwayAnswer,
     SpendingAnswer,
     TotalsAnswer,
     TransactionsAnswer,
@@ -56,7 +58,8 @@ KIND_SINGULAR: Final[dict[TransactionKind, str]] = {"expense": "Gasto", "income"
 SNAPSHOT_NOTE = "con la tasa de cada movimiento al registrarlo"
 CAN_ANSWER = (
     "Puedo decirte en qué gastaste, cuánto gastaste o te entró en un periodo, "
-    "tus saldos y tus últimos movimientos."
+    "tus saldos, tus últimos movimientos, cómo vas con tus topes y para cuántos días te "
+    "alcanza lo que tienes."
 )
 
 
@@ -184,5 +187,7 @@ def answer_text(answer: QueryAnswer, user: User, now: datetime) -> str:
             return balances_text(answer, now)
         case TransactionsAnswer():
             return transactions_text(answer, user)
+        case RunwayAnswer():
+            return runway_text(answer)
         case UnknownCategory():
             return unknown_category_text(answer)

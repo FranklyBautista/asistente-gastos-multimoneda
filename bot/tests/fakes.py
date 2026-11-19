@@ -62,6 +62,9 @@ class FakeUserStore:
     async def set_ves_rate_source(self, user_id: UUID, source: VesRateSource) -> User:
         return self._save(replace(self.by_id[user_id], ves_rate_source=source))
 
+    async def set_context_replies(self, user_id: UUID, enabled: bool) -> User:
+        return self._save(replace(self.by_id[user_id], context_replies=enabled))
+
     async def complete_onboarding(self, user_id: UUID, timezone: str) -> User:
         current = self.by_id[user_id]
         onboarded_at = current.onboarded_at or datetime.now(UTC)
@@ -279,7 +282,9 @@ class FakeReportStore:
         totals: list[CurrencyTotal] | None = None,
         balances: list[AccountBalance] | None = None,
         transactions: list[TransactionRow] | None = None,
+        first_movement: datetime | None = None,
     ) -> None:
+        self.first_movement = first_movement
         self.spending = spending or []
         self.totals_rows = totals or []
         self.balances = balances or []
@@ -318,6 +323,9 @@ class FakeReportStore:
     async def account_balances(self, user_id: UUID) -> list[AccountBalance]:
         self.calls.append(("balances", {}))
         return self.balances
+
+    async def first_movement_at(self, user_id: UUID) -> datetime | None:
+        return self.first_movement
 
     async def list_transactions(
         self,

@@ -91,3 +91,18 @@
 {"id": "dq-01", "text": "¿cuánto debo?", "intent": "query", "query": {"tool": "list_debts", "direction": "i_owe"}}
 {"id": "dq-02", "text": "¿quién me debe plata?", "intent": "query", "query": {"tool": "list_debts", "direction": "owed_to_me"}}
 {"id": "dq-03", "text": "¿cuánto le debo a miguel?", "intent": "query", "query": {"tool": "list_debts", "direction": "i_owe", "counterparty": "miguel"}}
+{"id": "top-01", "text": "no quiero gastar más de 100 dólares al mes en comida", "intent": "set_budget", "budget": {"category": "comida", "amount": 100, "currency": "USD", "remove": false}}
+{"id": "top-02", "text": "ponme un tope de 50 en ocio", "intent": "set_budget", "budget": {"category": "ocio", "amount": 50, "remove": false}}
+{"id": "top-03", "text": "límite de 30 usdt al mes para transporte", "intent": "set_budget", "budget": {"category": "transporte", "amount": 30, "currency": "USDT", "remove": false}}
+{"id": "top-04", "text": "quiero gastar máximo 200 mil pesos en comida este mes", "intent": "set_budget", "budget": {"category": "comida", "amount": 200000, "currency": "COP", "remove": false}}
+{"id": "top-05", "text": "quita el tope de ocio", "intent": "set_budget", "budget": {"category": "ocio", "remove": true}}
+{"id": "top-06", "text": "ya no quiero límite en salud", "intent": "set_budget", "budget": {"category": "salud", "remove": true}}
+{"id": "top-07", "text": "quiero ponerle un tope a la comida", "intent": "set_budget", "budget": {"category": "comida", "amount": null, "remove": false}}
+{"id": "top-08", "text": "tope de 80 en mascotas", "intent": "set_budget", "budget": {"category": "mascotas", "amount": 80, "remove": false}}
+{"id": "top-09", "text": "me pasé del tope, gasté 20 dólares en comida", "intent": "log_transactions", "transactions": [{"kind": "expense", "amount": 20, "currency": "USD", "category": "comida"}]}
+{"id": "tq-01", "text": "¿cómo voy con mis topes?", "intent": "query", "query": {"tool": "budget_status"}}
+{"id": "tq-02", "text": "¿cuánto me queda para gastar en comida?", "intent": "query", "query": {"tool": "budget_status"}}
+{"id": "col-01", "text": "¿cuánto me dura la plata?", "intent": "query", "query": {"tool": "runway"}}
+{"id": "col-02", "text": "¿para cuántos días me alcanza lo que tengo?", "intent": "query", "query": {"tool": "runway"}}
+{"id": "col-03", "text": "¿cómo va mi colchón?", "intent": "query", "query": {"tool": "runway"}}
+{"id": "col-04", "text": "¿cuánto tengo?", "intent": "query", "query": {"tool": "account_balances"}}

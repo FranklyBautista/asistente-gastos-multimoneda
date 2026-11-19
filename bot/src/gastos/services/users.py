@@ -15,6 +15,7 @@ class UserStore(Protocol):
     async def set_default_currency(self, user_id: UUID, currency: Currency) -> User: ...
     async def set_ves_rate_source(self, user_id: UUID, source: VesRateSource) -> User: ...
     async def complete_onboarding(self, user_id: UUID, timezone: str) -> User: ...
+    async def set_context_replies(self, user_id: UUID, enabled: bool) -> User: ...
 
 
 class UserService:
@@ -33,6 +34,10 @@ class UserService:
 
     async def choose_ves_rate_source(self, user: User, value: str) -> User:
         return await self._store.set_ves_rate_source(user.id, parse_ves_rate_source(value))
+
+    async def toggle_context(self, user: User) -> User:
+        """/contexto: enciende o apaga la línea de contexto al anotar (Fase 12)."""
+        return await self._store.set_context_replies(user.id, not user.context_replies)
 
     async def finish_onboarding(self, user: User, timezone: str) -> User:
         return await self._store.complete_onboarding(user.id, parse_timezone(timezone))

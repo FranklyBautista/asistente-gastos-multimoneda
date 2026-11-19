@@ -10,7 +10,7 @@ moneda, el botón avisa que expiró y basta con reenviar el mensaje.
 
 import secrets
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from typing import Final, Literal, Protocol
 from uuid import UUID
@@ -31,6 +31,7 @@ from gastos.domain.transaction import (
 from gastos.domain.user import User
 from gastos.extraction.parser import (
     Categories,
+    to_budget_draft,
     to_correction_draft,
     to_debt_draft,
     to_drafts,
@@ -38,6 +39,8 @@ from gastos.extraction.parser import (
     to_payment_draft,
 )
 from gastos.extraction.schema import Extraction
+from gastos.services.budgets import BudgetOutcome, BudgetService, BudgetStatus
+from gastos.services.context import ContextLine
 from gastos.services.corrections import (
     WHAT_TO_FIX,
     CorrectionOutcome,
@@ -47,7 +50,7 @@ from gastos.services.corrections import (
 from gastos.services.debts import DebtList, DebtOutcome, DebtService
 from gastos.services.exchanges import ExchangeSaved, ExchangeService
 from gastos.services.outcomes import Ask, NotATransaction
-from gastos.services.query_tools import QueryAnswer, QueryService
+from gastos.services.query_tools import QueryAnswer, QueryService, RunwayAnswer
 from gastos.services.rates import CurrentRate
 
 PENDING_TTL: Final = timedelta(minutes=30)
@@ -80,6 +83,12 @@ class TextExtractor(Protocol):
     ) -> Extraction: ...
 
 
+class ContextSource(Protocol):
+    """Lo implementa services.ContextService (Fase 12)."""
+
+    async def lines(self, user: User, saved: Sequence[SavedTransaction]) -> list[ContextLine]: ...
+
+
 class UserRates(Protocol):
     """Lo implementa services.RateService."""
 
@@ -97,6 +106,8 @@ class Saved:
     stale_rates: list[Rate]  # tasas usadas que llevan tiempo sin actualizarse
     # Tasas del Bs de otra fuente porque la del usuario no tenía una fresca.
     replaced_rates: list[CurrentRate] = field(default_factory=list[CurrentRate])
+    # Cómo vas en las categorías del mensaje (Fase 12); vacío si está apagado o sin datos.
+    context: list[ContextLine] = field(default_factory=list[ContextLine])
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,6 +124,8 @@ Outcome = (
     | CorrectionOutcome
     | DebtOutcome
     | DebtList
+    | BudgetOutcome
+    | BudgetStatus
     | Ask
     | NotATransaction
 )
@@ -171,6 +184,9 @@ class TransactionService:
         corrections: CorrectionService,
         debts: DebtService,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        *,
+        budgets: BudgetService | None = None,
+        context: ContextSource | None = None,
     ) -> None:
         self._store = store
         self._extractor = extractor
@@ -179,6 +195,8 @@ class TransactionService:
         self._queries = queries
         self._corrections = corrections
         self._debts = debts
+        self._budgets = budgets
+        self._context = context
         self._clock = clock
         self._pending = PendingStore(clock)
         self._followups: dict[UUID, _Followup] = {}
@@ -194,6 +212,10 @@ class TransactionService:
                 text, outcome.question, self._clock() + FOLLOWUP_TTL
             )
         return outcome
+
+    async def runway(self, user: User) -> RunwayAnswer:
+        """/colchon: cuántos días te dura lo que tienes (Fase 12)."""
+        return await self._queries.runway(user, self._clock().astimezone(ZoneInfo(user.timezone)))
 
     async def last_movements(self, user: User) -> list[SavedTransaction] | NothingToCorrect:
         return await self._corrections.last(user)
@@ -250,8 +272,16 @@ class TransactionService:
                 return Ask("¿Qué deuda se pagó? Dime con quién y cuánto.")
             payment = to_payment_draft(extraction.debt_payment)
             return await self._debts.settle(user, payment, raw_text)
+        if extraction.intent == "set_budget" and self._budgets is not None:
+            if extraction.budget is None:
+                return Ask("¿En qué categoría quieres el tope y de cuánto al mes?")
+            return await self._budgets.apply(user, to_budget_draft(extraction.budget), raw_text)
         if extraction.intent == "query" and extraction.query is not None:
             query = extraction.query
+            if query.tool == "budget_status" and self._budgets is not None:
+                return await self._budgets.status(user)
+            if query.tool == "budget_status":
+                return NotATransaction("query")  # sin servicio de topes (pruebas viejas)
             if query.tool == "list_debts":
                 return await self._debts.list(
                     user,
@@ -263,6 +293,8 @@ class TransactionService:
         if extraction.intent == "correction" and extraction.correction is not None:
             draft = to_correction_draft(extraction.correction)
             return await self._corrections.correct(user, draft, raw_text)
+        if extraction.intent == "set_budget":
+            return NotATransaction("other")  # sin servicio de topes (pruebas viejas)
         if extraction.intent != "log_transactions":
             return NotATransaction(extraction.intent)
         if extraction.clarification and extraction.clarification.field != "currency":
@@ -331,7 +363,10 @@ class TransactionService:
         saved = await self._store.insert_many(user.id, items)
         stale = [c.rate for c in rates.values() if c is not None and c.stale]
         replaced = [c for c in rates.values() if c is not None and c.replaced is not None]
-        return Saved(saved, stale, replaced)
+        result = Saved(saved, stale, replaced)
+        if self._context is not None:
+            result = replace(result, context=await self._context.lines(user, saved))
+        return result
 
 
 def _category_names(categories: Sequence[Category]) -> Categories:

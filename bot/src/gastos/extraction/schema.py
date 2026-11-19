@@ -66,7 +66,13 @@ class ParsedQuery(LLMOutput):
     """Una pregunta sobre sus finanzas: qué herramienta usar y con qué parámetros."""
 
     tool: Literal[
-        "spending_by_category", "totals", "account_balances", "list_transactions", "list_debts"
+        "spending_by_category",
+        "totals",
+        "account_balances",
+        "list_transactions",
+        "list_debts",
+        "budget_status",
+        "runway",
     ]
     period: Period | None = Field(
         default=None, description='Periodo de la lista; "month" con month para un mes concreto'
@@ -147,6 +153,20 @@ class ParsedDebtPayment(LLMOutput):
     )
 
 
+class ParsedBudget(LLMOutput):
+    """Un tope de gasto mensual: "no quiero gastar más de 100 dólares al mes en comida"."""
+
+    category: str | None = Field(
+        default=None,
+        description="Categoría de gasto de la lista; si no existe, la palabra tal como la dijo",
+    )
+    amount: float | None = Field(
+        default=None, gt=0, description="Máximo al mes; null si no lo dice"
+    )
+    currency: Currency | None = Field(default=None, description="Solo si la dice")
+    remove: bool = Field(default=False, description="true solo si pide quitar el tope")
+
+
 class Clarification(LLMOutput):
     field: Literal["currency", "amount", "account", "kind"]
     question: str = Field(description="En español, una línea")
@@ -158,6 +178,7 @@ class Extraction(LLMOutput):
         "log_exchange",
         "log_debt",
         "settle_debt",
+        "set_budget",
         "query",
         "correction",
         "other",
@@ -176,5 +197,6 @@ class Extraction(LLMOutput):
     debt_payment: ParsedDebtPayment | None = Field(
         default=None, description="Solo con intent settle_debt"
     )
+    budget: ParsedBudget | None = Field(default=None, description="Solo con intent set_budget")
     clarification: Clarification | None = None
     confidence: float = Field(ge=0, le=1)

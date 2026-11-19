@@ -175,3 +175,16 @@ def undo_debt_payment_keyboard(payment_id: str) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="↩️ Deshacer", callback_data=UndoDebtPaymentCallback(payment_id=payment_id))
     return builder.as_markup()
+
+
+# ---- Topes (Fase 12) ----
+
+
+class UndoBudgetCallback(CallbackData, prefix="undob"):
+    budget_id: str
+
+
+def undo_budget_keyboard(budget_id: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="↩️ Deshacer", callback_data=UndoBudgetCallback(budget_id=budget_id))
+    return builder.as_markup()

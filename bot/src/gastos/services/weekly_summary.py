@@ -37,9 +37,11 @@ from gastos.domain.metrics import (
 from gastos.domain.money import format_money, format_number
 from gastos.domain.numbers import unknown_numbers
 from gastos.domain.reports import AccountBalance, CategoryTotal, CurrencyTotal
+from gastos.domain.runway import Runway
 from gastos.domain.transaction import TransactionKind
 from gastos.domain.user import User
 from gastos.llm.base import LLMClient
+from gastos.services.query_tools import RunwayAnswer
 from gastos.services.rates import CurrentRate
 
 log = structlog.get_logger()
@@ -123,6 +125,12 @@ class PendingDebts(Protocol):
         direction: DebtDirection | None = None,
         include_settled: bool = False,
     ) -> list[Debt]: ...
+
+
+class RunwaySource(Protocol):
+    """Lo implementa services.QueryService (Fase 12)."""
+
+    async def runway(self, user: User, now_local: datetime) -> RunwayAnswer: ...
 
 
 class Recipients(Protocol):
@@ -261,6 +269,23 @@ def debts_section(debts: list[Debt]) -> str | None:
     return f"📒 Deudas pendientes: {'; '.join(parts)}. Detalle en /deudas."
 
 
+def runway_section(answer: RunwayAnswer) -> str | None:
+    """«Colchón» (Fase 12): plantilla fija fuera del texto del LLM, como las deudas.
+
+    Sin historial suficiente no se dice nada: el resumen no es el lugar para explicarlo.
+    """
+    result = answer.result
+    if not isinstance(result, Runway):
+        return None
+    days = "1 día" if result.days == 1 else f"{result.days} días"
+    text = f"🛟 Colchón: con lo que tienes cubres unos {days} de tus gastos."
+    if result.days == 0:
+        text = "🛟 Colchón: hoy lo que tienes no alcanza para un día de tus gastos."
+    if result.next_step is not None:
+        text += f" Siguiente escalón: {result.next_step} días."
+    return f"{text} Detalle en /colchon."
+
+
 def _stale_note(current: CurrentRate | None, now: datetime) -> str | None:
     if current is None or not current.stale:
         return None
@@ -279,9 +304,11 @@ class WeeklySummaryService:
         *,
         send_hour: int = 18,
         debts: PendingDebts | None = None,
+        runway: RunwaySource | None = None,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
         self._debts = debts
+        self._runway = runway
         self._reports = reports
         self._rates = rates
         self._llm = llm
@@ -306,6 +333,12 @@ class WeeklySummaryService:
             section = debts_section(await self._debts.list(user.id))
             if section:
                 parts.append(section)
+        if self._runway is not None:
+            cushion = runway_section(
+                await self._runway.runway(user, now.astimezone(ZoneInfo(user.timezone)))
+            )
+            if cushion:
+                parts.append(cushion)
         note = _stale_note(current_ves, now)
         if note:
             parts.append(note)
