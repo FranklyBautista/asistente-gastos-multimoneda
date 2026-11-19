@@ -18,6 +18,8 @@ class User:
     default_currency: Currency
     ves_rate_source: VesRateSource
     onboarded_at: datetime | None
+    # Fase 12: una línea de contexto al anotar («comida: llevas 80 de 100»); /contexto la apaga.
+    context_replies: bool = True
 
     @property
     def is_onboarded(self) -> bool:

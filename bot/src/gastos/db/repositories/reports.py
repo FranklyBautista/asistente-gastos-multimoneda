@@ -120,6 +120,17 @@ class ReportRepository:
             for r in rows
         ]
 
+    async def first_movement_at(self, user_id: UUID) -> datetime | None:
+        """Cuándo ocurrió el primer movimiento vigente (Fase 12: historial del colchón)."""
+        rows = await self._fetch(
+            sql.SQL(
+                "select min(occurred_at) from transactions "
+                "where user_id = %s and deleted_at is null"
+            ),
+            [user_id],
+        )
+        return cast(datetime | None, rows[0][0])
+
     async def list_transactions(
         self,
         user_id: UUID,

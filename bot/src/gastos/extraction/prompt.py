@@ -10,7 +10,7 @@ from typing import Final
 
 from gastos.domain.correction import CorrectionExample, CorrectionField
 
-PROMPT_VERSION: Final = "extraccion-v6"
+PROMPT_VERSION: Final = "extraccion-v7"
 
 _RULES = """\
 Eres el extractor de un bot de finanzas personales para alguien que vive con cuatro monedas:
@@ -28,9 +28,13 @@ Intención (intent):
   "luisa me debe 50 mil", "le presté 10 usdt a pedro"). Va en debt.
 - settle_debt: paga (total o en parte) una deuda ya anotada ("le pagué a miguel", "se pagó
   la deuda con miguel", "luisa me pagó 20 mil"). Va en debt_payment.
+- set_budget: fija o quita un tope de gasto mensual para una categoría ("no quiero gastar
+  más de 100 dólares al mes en comida", "ponme un tope de 50 en ocio", "quita el tope de
+  ocio"). Va en budget.
 - other: saludos o cualquier otra cosa. Con intent distinto de log_transactions,
   transactions va vacío; exchange solo se llena con log_exchange, correction solo con
-  correction, debt solo con log_debt y debt_payment solo con settle_debt.
+  correction, debt solo con log_debt, debt_payment solo con settle_debt y budget solo con
+  set_budget.
 
 Montos:
 - amount es siempre positivo; kind dice si es gasto (expense) o ingreso (income).
@@ -90,6 +94,16 @@ Deudas (debt y debt_payment):
 - "Me pagaron 200 usdt" sin una persona es un ingreso (log_transactions), no settle_debt.
   "Le pagué el almuerzo a miguel" es un gasto, salvo que hable de una deuda.
 
+Topes (budget):
+- category: el nombre de una categoría de gasto de la lista; si no existe, la palabra tal
+  como la dijo. null si no la dice.
+- amount: el máximo al mes, con las mismas reglas de montos; null si no lo dice.
+- currency: solo si la dice, con el mismo léxico de monedas. Sin moneda, null (el bot usa
+  dólares).
+- remove true solo si pide quitar o eliminar el tope.
+- Un gasto con la palabra "tope" o "límite" que ya ocurrió ("me pasé del tope, gasté 20 en
+  comida") es log_transactions, no set_budget.
+
 Preguntas (query): elige una herramienta y sus parámetros. Nunca respondas tú la pregunta
 ni inventes cifras: el bot consulta la base de datos.
 - spending_by_category: en qué se le fue el dinero, gasto por categoría.
@@ -110,6 +124,11 @@ ni inventes cifras: el bot consulta la base de datos.
   lo que debe, owed_to_me si pregunta por lo que le deben, null si pregunta por todas.
   counterparty solo si nombra a una persona; include_settled true solo si pide también las
   ya pagadas. No lleva periodo.
+- budget_status: cómo va con sus topes, cuánto le queda para gastar en una categoría con
+  tope ("¿cómo voy con mis topes?", "¿cuánto me queda para comida?"). No lleva periodo.
+- runway: cuántos días o meses le dura lo que tiene si no le entra más dinero ("¿cuánto me
+  dura la plata?", "¿para cuántos días me alcanza?", "¿cómo va mi colchón?"). No lleva
+  periodo.
 
 Correcciones (correction): llena solo lo que cambia; el resto va null.
 - category: el nombre de la lista del tipo correcto ("eso fue transporte" -> transporte).
@@ -282,6 +301,24 @@ Ejemplos (mensaje -> JSON):
 "¿quién me debe?" ->
 {"intent":"query","confidence":0.95,"transactions":[],"query":{"tool":"list_debts",
 "direction":"owed_to_me"}}
+
+"no quiero gastar más de 100 dólares al mes en comida" ->
+{"intent":"set_budget","confidence":0.95,"transactions":[],"budget":{"category":"comida",
+"amount":100,"currency":"USD","remove":false}}
+
+"ponme un tope de 50 en ocio" ->
+{"intent":"set_budget","confidence":0.9,"transactions":[],"budget":{"category":"ocio",
+"amount":50,"currency":null,"remove":false}}
+
+"quita el tope de ocio" ->
+{"intent":"set_budget","confidence":0.95,"transactions":[],"budget":{"category":"ocio",
+"amount":null,"currency":null,"remove":true}}
+
+"¿cómo voy con mis topes?" ->
+{"intent":"query","confidence":0.95,"transactions":[],"query":{"tool":"budget_status"}}
+
+"¿cuánto me dura la plata?" ->
+{"intent":"query","confidence":0.95,"transactions":[],"query":{"tool":"runway"}}
 
 "gasté en el almuerzo" ->
 {"intent":"log_transactions","confidence":0.6,"transactions":[],

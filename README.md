@@ -5,7 +5,7 @@ Para quien vive con varias monedas a la vez. Le escribes a un bot de Telegram co
 - **Bot:** [@frankly_gastos_bot](https://t.me/frankly_gastos_bot) (acceso por lista blanca).
 - **Web:** <https://asistente-gastos-multimoneda.vercel.app>.
 
-> Estado: **Fase 11**, seguimiento de deudas (rama `fase-11/deudas`). Pendiente: Fase 12, app móvil.
+> Estado: **Fase 12**, hábitos: topes por categoría, colchón en días y contexto al anotar (rama `fase-12/habitos`; falta la parte web). Pendiente: Fase 13, app móvil.
 
 ## Qué hace
 
@@ -17,6 +17,8 @@ Para quien vive con varias monedas a la vez. Le escribes a un bot de Telegram co
 | Cada domingo envía un resumen semanal que incluye cuánto perdieron o ganaron tus bolívares. | **Cambios:** historial con la tasa efectiva, la de referencia y la diferencia en %. |
 | Aprende de tus correcciones («eso fue transporte»). | Las ediciones hechas en la web también le sirven al bot como ejemplos. |
 | Lleva tus deudas («le debo 20 dólares a miguel», «luisa me debe 50 mil») y las tacha cuando se pagan; pregunta de qué cuenta salió el dinero. `/deudas` muestra lo pendiente. | **Deudas:** pendientes por persona y moneda con su total, y las liquidadas tachadas. |
+| Topes por categoría en dólares («no quiero gastar más de 100 dólares al mes en comida»). Cada gasto anotado dice cómo vas en esa categoría; `/contexto` lo apaga y `/topes` muestra todos. | |
+| Colchón en días: «¿cuánto me dura la plata?» o `/colchon` dice para cuántos días alcanza lo que tienes con tu gasto promedio. También sale en el resumen semanal. | |
 
 Las tasas salen de BCV, el paralelo y Binance P2P para el Bs (cada persona elige su fuente), de ExchangeRate-API para el COP y de CoinGecko para el USDT. Se refrescan cada hora y quedan guardadas como historial.
 

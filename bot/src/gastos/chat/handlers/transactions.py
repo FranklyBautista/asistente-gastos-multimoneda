@@ -14,6 +14,13 @@ from aiogram.utils.chat_action import ChatActionSender
 
 from gastos.chat.answers import CAN_ANSWER, answer_text
 from gastos.chat.formatting import SYMBOLS, format_age, format_money, format_number
+from gastos.chat.handlers.budgets import (
+    budget_removed_text,
+    budget_saved_text,
+    budget_status_text,
+    context_text,
+    no_budget_text,
+)
 from gastos.chat.handlers.debts import reply_debt
 from gastos.chat.handlers.rates import LABELS
 from gastos.chat.keyboards import (
@@ -21,6 +28,7 @@ from gastos.chat.keyboards import (
     UndoCallback,
     UndoExchangeCallback,
     choose_currency_keyboard,
+    undo_budget_keyboard,
     undo_exchange_keyboard,
     undo_keyboard,
 )
@@ -30,6 +38,7 @@ from gastos.domain.correction import KIND_LABELS as CORRECTION_KIND_LABELS
 from gastos.domain.currency import Currency, parse_currency
 from gastos.domain.transaction import SavedTransaction, TransactionDraft
 from gastos.domain.user import User
+from gastos.services.budgets import BudgetRemoved, BudgetSaved, BudgetStatus, NoBudget
 from gastos.services.corrections import Corrected, NoChange, NothingReason, NothingToCorrect
 from gastos.services.debts import (
     ChooseAccount,
@@ -44,6 +53,7 @@ from gastos.services.exchanges import ExchangeSaved
 from gastos.services.outcomes import Ask, NotATransaction
 from gastos.services.query_tools import (
     BalancesAnswer,
+    RunwayAnswer,
     SpendingAnswer,
     TotalsAnswer,
     TransactionsAnswer,
@@ -116,6 +126,8 @@ def confirmation_text(saved: Saved, user: User, now: datetime) -> str:
     now_local = now.astimezone(tz)
     lines = [_line(tx, now_local, tz) for tx in saved.transactions]
     text = f"✅ {lines[0]}" if len(lines) == 1 else "✅ Anotado:\n" + "\n".join(lines)
+    if saved.context:  # Fase 12: cómo vas en esas categorías
+        text += "\n" + "\n".join(context_text(line) for line in saved.context)
     notes = [_replaced_note(c) for c in saved.replaced_rates]
     notes += [_stale_note(rate, now) for rate in saved.stale_rates]
     return "\n\n".join([text, *notes])
@@ -292,9 +304,21 @@ async def reply(message: Message, outcome: Outcome, user: User) -> None:
             | TotalsAnswer()
             | BalancesAnswer()
             | TransactionsAnswer()
+            | RunwayAnswer()
             | UnknownCategory()
         ):
             await message.answer(answer_text(outcome, user, datetime.now(UTC)))
+        case BudgetSaved():
+            await message.answer(
+                budget_saved_text(outcome, datetime.now(UTC)),
+                reply_markup=undo_budget_keyboard(str(outcome.progress.budget.id)),
+            )
+        case BudgetRemoved():
+            await message.answer(budget_removed_text(outcome))
+        case NoBudget():
+            await message.answer(no_budget_text(outcome))
+        case BudgetStatus():
+            await message.answer(budget_status_text(outcome))
         case ExchangeSaved():
             await message.answer(
                 exchange_text(outcome, user, datetime.now(UTC)),

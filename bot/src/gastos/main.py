@@ -13,6 +13,7 @@ from gastos.chat.dispatcher import build_dispatcher
 from gastos.chat.webhook import WEBHOOK_PATH, BackgroundUpdates, build_server, build_webhook_app
 from gastos.config import Settings, get_settings
 from gastos.db.pool import create_pool, ping
+from gastos.db.repositories.budgets import BudgetRepository
 from gastos.db.repositories.corrections import CorrectionRepository
 from gastos.db.repositories.debts import DebtRepository
 from gastos.db.repositories.exchanges import ExchangeRepository
@@ -31,6 +32,8 @@ from gastos.observability.heartbeat import healthcheck_ping
 from gastos.observability.logging import configure_logging
 from gastos.rates.base import create_http_client
 from gastos.rates.sources import HttpRateSources
+from gastos.services.budgets import BudgetService
+from gastos.services.context import ContextService
 from gastos.services.corrections import CorrectionService
 from gastos.services.debts import DebtService
 from gastos.services.exchanges import ExchangeService
@@ -49,6 +52,9 @@ COMMANDS = [
     BotCommand(command="resumen", description="Cómo va tu semana"),
     BotCommand(command="corregir", description="Corregir lo último que anotaste"),
     BotCommand(command="deudas", description="Lo que debes y lo que te deben"),
+    BotCommand(command="topes", description="Cómo vas con tus topes del mes"),
+    BotCommand(command="colchon", description="Cuántos días te dura lo que tienes"),
+    BotCommand(command="contexto", description="Activar o apagar el contexto al anotar"),
     BotCommand(command="vincular", description="Código para ver tus finanzas en la web"),
     BotCommand(command="ayuda", description="Qué puedo hacer"),
 ]
@@ -119,8 +125,17 @@ async def main() -> None:
     corrections = CorrectionService(CorrectionRepository(pool), transaction_repo, rates)
     debt_repo = DebtRepository(pool)
     debts = DebtService(debt_repo, transaction_repo, rates)
+    budgets = BudgetService(BudgetRepository(pool), report_repo, transaction_repo, rates)
     transactions = TransactionService(
-        transaction_repo, Extractor(llm), rates, exchanges, queries, corrections, debts
+        transaction_repo,
+        Extractor(llm),
+        rates,
+        exchanges,
+        queries,
+        corrections,
+        debts,
+        budgets=budgets,
+        context=ContextService(budgets, report_repo),
     )
     user_repo = UserRepository(pool)
     summaries = WeeklySummaryService(
@@ -131,6 +146,7 @@ async def main() -> None:
         user_repo,
         send_hour=settings.weekly_summary_hour,
         debts=debt_repo,
+        runway=queries,
     )
     updates = UpdateLedger(UpdateRepository(pool))
     dp = build_dispatcher(
@@ -142,6 +158,7 @@ async def main() -> None:
         updates,
         LinkService(LinkRepository(pool)),
         debts,
+        budgets,
         messages_per_minute=settings.rate_limit_per_minute,
         web_url=settings.web_url,
     )

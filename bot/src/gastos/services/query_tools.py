@@ -6,7 +6,7 @@ las arma con plantillas, así que ninguna cifra puede salir inventada.
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Final, Literal, Protocol
 from uuid import UUID
@@ -17,6 +17,7 @@ from gastos.domain.currency import Currency
 from gastos.domain.errors import RateUnavailable
 from gastos.domain.periods import DateRange, Period, resolve_range
 from gastos.domain.reports import AccountBalance, CategoryTotal, CurrencyTotal, TransactionRow
+from gastos.domain.runway import Runway, RunwayUnknown, runway, window_days
 from gastos.domain.transaction import TransactionKind
 from gastos.domain.user import User
 from gastos.extraction.schema import ParsedQuery
@@ -46,6 +47,7 @@ class ReportStore(Protocol):
         category: str | None,
     ) -> list[CurrencyTotal]: ...
     async def account_balances(self, user_id: UUID) -> list[AccountBalance]: ...
+    async def first_movement_at(self, user_id: UUID) -> datetime | None: ...
     async def list_transactions(
         self,
         user_id: UUID,
@@ -117,12 +119,27 @@ class TransactionsAnswer:
 
 
 @dataclass(frozen=True, slots=True)
+class RunwayAnswer:
+    """Colchón en días (Fase 12): saldo en USD a las tasas vigentes entre el gasto diario."""
+
+    result: Runway | RunwayUnknown
+    balances: BalancesAnswer  # el saldo en USD usado, con sus tasas y las que faltaron
+
+
+@dataclass(frozen=True, slots=True)
 class UnknownCategory:
     name: str
     available: list[str]
 
 
-QueryAnswer = SpendingAnswer | TotalsAnswer | BalancesAnswer | TransactionsAnswer | UnknownCategory
+QueryAnswer = (
+    SpendingAnswer
+    | TotalsAnswer
+    | BalancesAnswer
+    | TransactionsAnswer
+    | RunwayAnswer
+    | UnknownCategory
+)
 
 
 class QueryService:
@@ -134,6 +151,8 @@ class QueryService:
     async def answer(self, user: User, query: ParsedQuery, now_local: datetime) -> QueryAnswer:
         if query.tool == "account_balances":
             return await self._balances(user, query.in_usd)
+        if query.tool == "runway":
+            return await self.runway(user, now_local)
 
         category = None
         if query.category:
@@ -160,6 +179,23 @@ class QueryService:
             user.id, start, end, query.kind, query.currency, category, limit
         )
         return TransactionsAnswer(date_range, transactions, query.kind, query.currency, category)
+
+    async def runway(self, user: User, now_local: datetime) -> RunwayAnswer:
+        """Cuántos días cubre lo que tienes con tu gasto diario de los últimos 90 días."""
+        balances = await self._balances(user, True)
+        first = await self._store.first_movement_at(user.id)
+        today = now_local.date()
+        tz = now_local.tzinfo
+        days = window_days(first.astimezone(tz).date() if first else None, today)
+        expenses = Decimal(0)
+        if days is not None:
+            midnight = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+            start = midnight - timedelta(days=days - 1)
+            end = midnight + timedelta(days=1)
+            rows = await self._store.totals(user.id, "expense", start, end, None, None)
+            expenses = sum((r.amount_usd for r in rows), Decimal(0))
+        available = balances.total_usd if balances.total_usd is not None else Decimal(0)
+        return RunwayAnswer(runway(available, expenses, days), balances)
 
     async def _find_category(
         self, user: User, name: str, query: ParsedQuery

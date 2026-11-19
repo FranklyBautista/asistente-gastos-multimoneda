@@ -34,6 +34,7 @@ CHECKS: Final = (
     "dirección de deuda",
     "deuda",
     "pago de deuda",
+    "tope",
 )
 
 
@@ -147,6 +148,7 @@ def score_case(case: Mapping[str, Any], extraction: Extraction, now_local: datet
         ("correction", "corrección"),
         ("debt", "deuda"),
         ("debt_payment", "pago de deuda"),
+        ("budget", "tope"),
     ):
         if key in case:
             parsed = getattr(extraction, key)

@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 
 import structlog
 
+from gastos.domain.budget import BudgetDraft
 from gastos.domain.correction import CorrectionDraft, CorrectionExample
 from gastos.domain.debt import DebtDraft, PaymentDraft, clean_counterparty
 from gastos.domain.exchange import ExchangeDraft
@@ -15,6 +16,7 @@ from gastos.domain.transaction import TransactionDraft
 from gastos.extraction.prompt import PROMPT_VERSION, system_prompt, user_prompt
 from gastos.extraction.schema import (
     Extraction,
+    ParsedBudget,
     ParsedCorrection,
     ParsedDebt,
     ParsedDebtPayment,
@@ -131,6 +133,16 @@ def to_payment_draft(parsed: ParsedDebtPayment) -> PaymentDraft:
         amount=_optional_decimal(parsed.amount),
         currency=parsed.currency,
         account_hint=parsed.account_hint,
+    )
+
+
+def to_budget_draft(parsed: ParsedBudget) -> BudgetDraft:
+    category = (parsed.category or "").strip().casefold() or None
+    return BudgetDraft(
+        category=category,
+        amount=_optional_decimal(parsed.amount),
+        currency=parsed.currency,
+        remove=parsed.remove,
     )
 
 
