@@ -4,14 +4,14 @@ El panel web en el bolsillo: saldos y consolidado en USD, movimientos, cambios e
 
 ## Estado (MVP de la Fase 13)
 
-| Hecho | Pendiente |
-| --- | --- |
-| Login, registro y vinculación con el código de `/vincular` | Edición de movimientos (hoy solo en la web) |
-| Sesión en el llavero del teléfono (`expo-secure-store`, en trozos) | Gráficas (Victory Native) |
-| Inicio: consolidado en USD, mes en curso y saldos por cuenta | Topes y colchón de la Fase 12 |
-| Movimientos paginados con filtro por moneda | Bloqueo con biometría |
-| Historial de cambios y deudas (liquidadas tachadas) | Fuente Plus Jakarta Sans y pulido visual |
-| Pruebas con Jest y CI `mobile.yml` | Maestro (E2E) y build del APK con EAS |
+| Hecho                                                              | Pendiente                                   |
+| ------------------------------------------------------------------ | ------------------------------------------- |
+| Login, registro y vinculación con el código de `/vincular`         | Edición de movimientos (hoy solo en la web) |
+| Sesión en el llavero del teléfono (`expo-secure-store`, en trozos) | Gráficas (Victory Native)                   |
+| Inicio: consolidado en USD, mes en curso y saldos por cuenta       | Topes y colchón de la Fase 12               |
+| Movimientos paginados con filtro por moneda                        | Bloqueo con biometría                       |
+| Historial de cambios y deudas (liquidadas tachadas)                | Fuente Plus Jakarta Sans y pulido visual    |
+| Pruebas con Jest y CI `mobile.yml`                                 | Maestro (E2E) y build del APK con EAS       |
 
 ## Desarrollo
 
