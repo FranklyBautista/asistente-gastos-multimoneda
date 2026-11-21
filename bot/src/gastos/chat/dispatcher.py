@@ -20,6 +20,7 @@ from gastos.chat.middlewares import (
     DeduplicateMiddleware,
     LogContextMiddleware,
     PerUserOrderMiddleware,
+    PrivateChatMiddleware,
     RateLimitMiddleware,
     UserMiddleware,
 )
@@ -59,10 +60,11 @@ def build_dispatcher(
         budgets=budget_service,
         web_url=web_url,
     )
-    # Orden: contexto de logs → lista blanca → orden por persona → repetidos → usuario. Lo no
-    # permitido no toca la BD; cada persona se atiende de a un update; un update repetido se
-    # descarta antes de llegar a los handlers.
+    # Orden: contexto de logs → chat privado → lista blanca → orden por persona → repetidos →
+    # usuario. Lo de grupos o canales y lo no permitido no toca la BD; cada persona se atiende
+    # de a un update; un update repetido se descarta antes de llegar a los handlers.
     dp.update.outer_middleware(LogContextMiddleware())
+    dp.update.outer_middleware(PrivateChatMiddleware())
     dp.update.outer_middleware(AllowlistMiddleware(allowed_ids))
     dp.update.outer_middleware(PerUserOrderMiddleware())
     dp.update.outer_middleware(DeduplicateMiddleware(updates))

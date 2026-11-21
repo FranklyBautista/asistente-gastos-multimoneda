@@ -1,6 +1,7 @@
 import asyncio
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -21,7 +22,12 @@ from gastos.chat.keyboards import (
     timezone_keyboard,
     ves_source_keyboard,
 )
-from gastos.chat.middlewares import AllowlistMiddleware, PerUserOrderMiddleware, UserMiddleware
+from gastos.chat.middlewares import (
+    AllowlistMiddleware,
+    PerUserOrderMiddleware,
+    PrivateChatMiddleware,
+    UserMiddleware,
+)
 from gastos.domain.conversion import Rate
 from gastos.domain.currency import QuotedCurrency, RateSource
 from gastos.domain.errors import InvalidPreference, RateUnavailable
@@ -85,6 +91,62 @@ async def test_lista_blanca_ignora_al_resto(data: dict[str, Any]) -> None:
     result = await AllowlistMiddleware([1, 2])(handler, Update(update_id=1), data)
     assert result is None
     assert handler.calls == []
+
+
+async def test_chat_privado_pasa() -> None:
+    handler = Recorder()
+    data = {"event_chat": Chat(id=1, type="private"), "event_from_user": tg_user(1)}
+    result = await PrivateChatMiddleware()(handler, Update(update_id=1), data)
+    assert result == "ok"
+    assert len(handler.calls) == 1
+
+
+@pytest.mark.parametrize("chat_type", ["group", "supergroup", "channel"])
+async def test_grupos_y_canales_se_ignoran(chat_type: str) -> None:
+    """En un grupo, /vincular publicaría el código y cualquiera vería tus finanzas en la web."""
+    handler = Recorder()
+    data = {"event_chat": Chat(id=-100, type=chat_type), "event_from_user": tg_user(1)}
+    result = await PrivateChatMiddleware()(handler, Update(update_id=1), data)
+    assert result is None
+    assert handler.calls == []
+
+
+async def test_update_sin_chat_se_ignora() -> None:
+    handler = Recorder()
+    result = await PrivateChatMiddleware()(
+        handler, Update(update_id=1), {"event_from_user": tg_user(1)}
+    )
+    assert result is None
+    assert handler.calls == []
+
+
+async def test_el_dispatcher_solo_atiende_vincular_en_privado() -> None:
+    """De punta a punta: el filtro está montado en el dispatcher, antes de la lista blanca."""
+    from gastos.chat.dispatcher import build_dispatcher
+
+    # Los routers son de módulo y solo se montan una vez: un solo dispatcher para ambos casos.
+    dp = build_dispatcher([1], *([None] * 7), messages_per_minute=20)  # type: ignore[arg-type]
+    # Sustituye la lista blanca por un registro: si el update llega hasta ahí, pasó el filtro.
+    handler = Recorder()
+    middlewares = dp.update.outer_middleware._middlewares
+    index = next(i for i, m in enumerate(middlewares) if isinstance(m, AllowlistMiddleware))
+    middlewares[index] = lambda _h, e, d: handler(e, d)
+
+    def vincular(update_id: int, chat: Chat) -> Update:
+        message = Message(
+            message_id=update_id,
+            date=datetime(2026, 11, 21, tzinfo=UTC),
+            chat=chat,
+            from_user=tg_user(1),
+            text="/vincular",
+        )
+        return Update(update_id=update_id, message=message)
+
+    bot = SimpleNamespace(id=42)  # feed_update solo lee bot.id antes del filtro
+    await dp.feed_update(bot, vincular(1, Chat(id=-100, type="group")))  # type: ignore[arg-type]
+    assert handler.calls == []
+    await dp.feed_update(bot, vincular(2, Chat(id=1, type="private")))  # type: ignore[arg-type]
+    assert len(handler.calls) == 1
 
 
 async def test_middleware_de_usuario_inyecta_al_usuario() -> None:

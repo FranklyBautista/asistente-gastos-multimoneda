@@ -1,4 +1,4 @@
-"""Middlewares: contexto de logs, lista blanca, límite de mensajes y carga del usuario."""
+"""Middlewares: contexto de logs, chat privado, lista blanca, límite de mensajes y usuario."""
 
 import asyncio
 import time
@@ -8,7 +8,8 @@ from typing import Any
 
 import structlog
 from aiogram import BaseMiddleware
-from aiogram.types import Message, TelegramObject, Update
+from aiogram.enums import ChatType
+from aiogram.types import Chat, Message, TelegramObject, Update
 from aiogram.types import User as TelegramUser
 
 from gastos.services.updates import UpdateLedger
@@ -33,6 +34,22 @@ class LogContextMiddleware(BaseMiddleware):
             return await handler(event, data)
         finally:
             log.debug("update_handled", ms=round((time.perf_counter() - started) * 1000))
+
+
+class PrivateChatMiddleware(BaseMiddleware):
+    """Ignora en silencio todo lo que no venga de un chat privado con el bot.
+
+    Las respuestas del bot son datos financieros y el código de /vincular: en un grupo o
+    canal los leería cualquier miembro, y con el código podría ver tus finanzas en la web.
+    Un update sin chat (consultas inline y similares) tampoco se atiende.
+    """
+
+    async def __call__(self, handler: Handler, event: TelegramObject, data: dict[str, Any]) -> Any:
+        chat: Chat | None = data.get("event_chat")
+        if chat is None or chat.type != ChatType.PRIVATE:
+            log.info("update_ignored", reason="not_private", chat_type=chat and chat.type)
+            return None
+        return await handler(event, data)
 
 
 class AllowlistMiddleware(BaseMiddleware):
