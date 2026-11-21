@@ -7,7 +7,7 @@
 #>
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('help', 'setup', 'hooks', 'run', 'check', 'test', 'test-int', 'eval', 'image', 'db-up', 'db-down', 'db-reset', 'db-test', 'web-setup', 'web', 'web-check', 'e2e')]
+    [ValidateSet('help', 'setup', 'hooks', 'run', 'check', 'test', 'test-int', 'eval', 'image', 'db-up', 'db-down', 'db-reset', 'db-test', 'web-setup', 'web', 'web-check', 'e2e', 'mobile-setup', 'mobile', 'mobile-check')]
     [string]$Task = 'help'
 )
 
@@ -15,6 +15,7 @@ $ErrorActionPreference = 'Stop'
 $Root = $PSScriptRoot
 $Bot = Join-Path $Root 'bot'
 $Web = Join-Path $Root 'web'
+$Mobile = Join-Path $Root 'mobile'
 
 # Ejecuta un comando en una carpeta y corta la tarea si devuelve un codigo distinto de 0.
 function Invoke-Step {
@@ -78,6 +79,14 @@ switch ($Task) {
         Invoke-Step $Web 'npm' @('run', 'build')
         Invoke-Step $Web 'npm' @('run', 'e2e')
     }
+    'mobile-setup' { Invoke-Step $Mobile 'npm' @('install') }
+    'mobile'   { Invoke-Step $Mobile 'npx' @('expo', 'start') }
+    'mobile-check' {
+        Invoke-Step $Mobile 'npm' @('run', 'lint')
+        Invoke-Step $Mobile 'npm' @('run', 'format:check')
+        Invoke-Step $Mobile 'npm' @('run', 'typecheck')
+        Invoke-Step $Mobile 'npm' @('test')
+    }
     'check'    {
         Invoke-BotChecks
         Invoke-Step $Bot 'uv' @('run', 'pytest', 'tests/integration', '-q')
@@ -101,5 +110,8 @@ switch ($Task) {
         Write-Host '  web       arranca la web en modo desarrollo (requiere web\.env.local y db-up)'
         Write-Host '  web-check lint, formato, tipos y build de la web'
         Write-Host '  e2e       pruebas de Playwright de la web contra Supabase local'
+        Write-Host '  mobile-setup instala las dependencias de la app movil (npm install)'
+        Write-Host '  mobile    arranca Expo (requiere mobile\.env.local); abre la app con Expo Go o un dev build'
+        Write-Host '  mobile-check lint, formato, tipos y pruebas de la app movil'
     }
 }

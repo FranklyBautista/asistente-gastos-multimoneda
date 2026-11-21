@@ -1,0 +1,33 @@
+name: mobile
+
+on:
+  push:
+    branches: [main]
+    # web/src/lib entra porque la app guarda copias exactas de format, link-errors y los tipos.
+    paths: ["mobile/**", "web/src/lib/**", ".github/workflows/mobile.yml"]
+  pull_request:
+    paths: ["mobile/**", "web/src/lib/**", ".github/workflows/mobile.yml"]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm test -- --ci
+      # El bundle de Android compila de verdad (Metro); sin llaves reales, nada se conecta.
+      - run: npx expo export --platform android --output-dir /tmp/mobile-export
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: http://127.0.0.1:55321
+          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: build-sin-llave
