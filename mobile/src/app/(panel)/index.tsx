@@ -1,10 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { StyleSheet, Text, View } from "react-native";
 
-import { AccountCard } from "@/components/currency";
 import { BudgetsCard, RunwayCard } from "@/components/habits";
-import { Button, ErrorState, LinkBanner, Loading, Screen, styles } from "@/components/ui";
-import { formatMonth, formatUsd, localToday, RATE_SOURCE_LABELS } from "@/lib/format";
+import { Button, Card, ErrorState, LinkBanner, Loading, Screen, styles } from "@/components/ui";
+import {
+  CURRENCY_LABELS,
+  formatAmount,
+  formatUsd,
+  localToday,
+  RATE_SOURCE_LABELS,
+} from "@/lib/format";
 import { daysLeftInMonth, runway } from "@/lib/habits";
 import { useLinkedUser } from "@/lib/hooks";
 import {
@@ -114,14 +119,8 @@ function Overview({
         ) : null}
         {month ? (
           <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
-            <MonthStat
-              label={`Ingresos de ${formatMonth(today)}`}
-              value={formatUsd(month.incomeUsd)}
-            />
-            <MonthStat
-              label={`Gastos de ${formatMonth(today)}`}
-              value={formatUsd(month.expensesUsd)}
-            />
+            <MonthStat label="Ingresos del mes" value={formatUsd(month.incomeUsd)} />
+            <MonthStat label="Gastos del mes" value={formatUsd(month.expensesUsd)} />
           </View>
         ) : null}
       </View>
@@ -134,11 +133,29 @@ function Overview({
       </Text>
       <View style={{ gap: 10 }}>
         {balances.map((b) => (
-          <AccountCard key={b.accountId} b={b} totalUsd={totalUsd} />
+          <Card
+            key={b.accountId}
+            style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}
+          >
+            <Text style={[styles.body, { flexShrink: 1 }]} numberOfLines={1}>
+              {b.name}
+            </Text>
+            <View style={{ alignItems: "flex-end" }}>
+              <Text style={[styles.body, { fontWeight: "700" }]}>
+                {formatAmount(b.balance, b.currency)} {CURRENCY_LABELS[b.currency]}
+              </Text>
+              <Text style={styles.faint}>{usdNote(b)}</Text>
+            </View>
+          </Card>
         ))}
       </View>
     </>
   );
+}
+
+function usdNote(b: Balance): string {
+  if (b.currency === "USD") return "Base";
+  return b.balanceUsd === null ? "Sin tasa" : `≈ ${formatUsd(b.balanceUsd)}`;
 }
 
 function MonthStat({ label, value }: { label: string; value: string }) {
