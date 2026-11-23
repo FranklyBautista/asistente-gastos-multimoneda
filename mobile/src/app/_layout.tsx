@@ -39,6 +39,10 @@ export default function RootLayout() {
                 presentation: "modal",
               }}
             />
+            <Stack.Screen
+              name="editar/[id]"
+              options={{ headerShown: true, title: "Editar movimiento" }}
+            />
           </Stack>
         </ThemeProvider>
       </AuthProvider>

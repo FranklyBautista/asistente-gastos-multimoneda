@@ -196,6 +196,86 @@ export async function getCategories(): Promise<Category[]> {
   return data.map((c) => ({ id: c.id, name: c.name, kind: kind(c.kind) }));
 }
 
+// ---- Edición (ADR 0014) ----
+
+export type EditableTransaction = {
+  id: string;
+  kind: Kind;
+  amount: number;
+  currency: Currency;
+  accountId: string;
+  categoryId: string | null;
+  description: string | null;
+  occurredAt: string;
+  /** Es el pago de una deuda vigente: edit_transaction lo rechaza con debt_linked. */
+  debtLinked: boolean;
+};
+
+/** Un movimiento para editar, como `getTransaction()` de la web; null si no existe. */
+export async function getTransaction(id: string): Promise<EditableTransaction | null> {
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("id, kind, amount, currency, account_id, category_id, description, occurred_at")
+    .eq("id", id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) throw new Error(`No se pudo leer el movimiento: ${error.message}`);
+  if (!data) return null;
+  const { count, error: debtError } = await supabase
+    .from("debt_payments")
+    .select("id", { count: "exact", head: true })
+    .eq("transaction_id", id)
+    .is("deleted_at", null);
+  if (debtError) throw new Error(`No se pudo leer el movimiento: ${debtError.message}`);
+  return {
+    id: data.id,
+    kind: kind(data.kind),
+    amount: Number(data.amount),
+    currency: currency(data.currency),
+    accountId: data.account_id,
+    categoryId: data.category_id,
+    description: data.description,
+    occurredAt: data.occurred_at,
+    debtLinked: (count ?? 0) > 0,
+  };
+}
+
+export type Account = { id: string; name: string; currency: Currency };
+
+export async function getAccounts(): Promise<Account[]> {
+  const { data, error } = await supabase
+    .from("accounts")
+    .select("id, name, currency")
+    .eq("archived", false)
+    .order("currency")
+    .order("name");
+  if (error) throw new Error(`No se pudieron leer las cuentas: ${error.message}`);
+  return data.map((a) => ({ id: a.id, name: a.name, currency: currency(a.currency) }));
+}
+
+/**
+ * Guarda la edición con la RPC `edit_transaction`, que valida al dueño, recalcula el snapshot
+ * en USD y deja cada cambio en `corrections`. Devuelve cuántos campos cambiaron; lanza el
+ * mensaje de la base (ver edit-errors).
+ */
+export async function editTransaction(edit: {
+  id: string;
+  kind: Kind;
+  amount: number;
+  accountId: string;
+  categoryId: string;
+}): Promise<number> {
+  const { data, error } = await supabase.rpc("edit_transaction", {
+    p_id: edit.id,
+    p_kind: edit.kind,
+    p_amount: edit.amount,
+    p_account_id: edit.accountId,
+    p_category_id: edit.categoryId,
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 // ---- Cambios entre monedas ----
 
 export type ExchangeRow = {

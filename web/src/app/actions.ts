@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { EDIT_ERRORS, editErrorMessage } from "@/lib/edit-errors";
 import { CODE_PATTERN, linkErrorMessage, normalizeCode } from "@/lib/link-errors";
 import { createClient } from "@/lib/supabase/server";
 
@@ -72,17 +73,6 @@ export async function redeemCode(_prev: FormState, formData: FormData): Promise<
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// Errores de edit_transaction (supabase/migrations/20261109120000_web_panel.sql).
-const EDIT_ERRORS: Record<string, string> = {
-  not_linked: "Vincula tu cuenta con Telegram antes de editar.",
-  transaction_not_found: "Ese movimiento ya no existe o se deshizo.",
-  account_not_found: "Esa cuenta no existe.",
-  category_mismatch: "Elige una categoría que corresponda al tipo de movimiento.",
-  invalid_amount: "El monto debe ser mayor que cero.",
-  invalid_kind: "Elige si es un gasto o un ingreso.",
-  rate_unavailable: "Todavía no hay tasa guardada para esa moneda; inténtalo más tarde.",
-};
-
 /**
  * Edita un movimiento con la RPC `edit_transaction`, que valida que sea de la sesión,
  * recalcula el snapshot en USD y deja cada cambio en `corrections` (ADR 0014).
@@ -109,9 +99,6 @@ export async function editTransaction(
     p_account_id: account,
     p_category_id: category,
   });
-  if (error) {
-    const known = Object.keys(EDIT_ERRORS).find((code) => error.message.includes(code));
-    return { error: known ? EDIT_ERRORS[known] : "No se pudo guardar. Inténtalo de nuevo." };
-  }
+  if (error) return { error: editErrorMessage(error.message) };
   redirect(`/movimientos?editado=${data}`);
 }

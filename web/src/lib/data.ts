@@ -189,6 +189,8 @@ export type EditableTransaction = {
   description: string | null;
   occurredAt: string;
   rawText: string | null;
+  /** Es el pago de una deuda vigente: edit_transaction lo rechaza con debt_linked. */
+  debtLinked: boolean;
 };
 
 export async function getTransaction(id: string): Promise<EditableTransaction | null> {
@@ -203,6 +205,12 @@ export async function getTransaction(id: string): Promise<EditableTransaction | 
     .maybeSingle();
   if (error) throw new Error(`No se pudo leer el movimiento: ${error.message}`);
   if (!data) return null;
+  const { count, error: debtError } = await supabase
+    .from("debt_payments")
+    .select("id", { count: "exact", head: true })
+    .eq("transaction_id", id)
+    .is("deleted_at", null);
+  if (debtError) throw new Error(`No se pudo leer el movimiento: ${debtError.message}`);
   return {
     id: data.id,
     kind: kind(data.kind),
@@ -213,6 +221,7 @@ export async function getTransaction(id: string): Promise<EditableTransaction | 
     description: data.description,
     occurredAt: data.occurred_at,
     rawText: data.raw_text,
+    debtLinked: (count ?? 0) > 0,
   };
 }
 

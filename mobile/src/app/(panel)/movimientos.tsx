@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { FlatList, RefreshControl, ScrollView, View } from "react-native";
+import { router } from "expo-router";
+import { FlatList, Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { FilterSheet } from "@/components/filter-sheet";
@@ -12,7 +13,7 @@ import { useLinkedUser } from "@/lib/hooks";
 import { getCategories, listTransactions, PAGE_SIZE } from "@/lib/queries";
 import { colors } from "@/theme";
 
-/** Lista paginada de list_transactions con los filtros de la web. Editar queda en la web. */
+/** Lista paginada de list_transactions con los filtros de la web; un toque abre la edición. */
 export default function TransactionsScreen() {
   const user = useLinkedUser();
   const [filters, setFilters] = useState<TxFilters>({});
@@ -79,7 +80,16 @@ export default function TransactionsScreen() {
             ) : null}
           </View>
         }
-        renderItem={({ item }) => <TransactionItem t={item} timeZone={timeZone} />}
+        renderItem={({ item }) => (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityHint="Abre el movimiento para editarlo"
+            onPress={() => router.push({ pathname: "/editar/[id]", params: { id: item.id } })}
+            style={({ pressed }) => pressed && { opacity: 0.7 }}
+          >
+            <TransactionItem t={item} timeZone={timeZone} />
+          </Pressable>
+        )}
         ListEmptyComponent={empty}
         ListFooterComponent={query.isFetchingNextPage ? <Loading /> : undefined}
         onEndReached={() => {
