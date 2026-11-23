@@ -4,15 +4,15 @@ El panel web en el bolsillo: saldos y consolidado en USD, movimientos, cambios e
 
 ## Estado (MVP de la Fase 13)
 
-| Hecho                                                                | Pendiente                                   |
-| -------------------------------------------------------------------- | ------------------------------------------- |
-| Login, registro y vinculación con el código de `/vincular`           | Edición de movimientos (hoy solo en la web) |
-| Sesión en el llavero del teléfono (`expo-secure-store`, en trozos)   | Gráficas (Victory Native)                   |
-| Inicio: consolidado en USD, mes en curso y saldos por cuenta         |                                             |
-| Movimientos paginados con filtros de moneda, tipo, categoría y fecha | Bloqueo con biometría                       |
-| Historial de cambios y deudas (liquidadas tachadas)                  | Fuente Plus Jakarta Sans y pulido visual    |
-| Colchón en días y topes del mes en Inicio (Fase 12)                  |                                             |
-| Pruebas con Jest y CI `mobile.yml`                                   | Maestro (E2E) y build del APK con EAS       |
+| Hecho                                                                                                  | Pendiente                                |
+| ------------------------------------------------------------------------------------------------------ | ---------------------------------------- |
+| Login, registro y vinculación con el código de `/vincular`                                             |                                          |
+| Sesión en el llavero del teléfono (`expo-secure-store`, en trozos)                                     | Gráficas (Victory Native)                |
+| Inicio: consolidado en USD, mes en curso y saldos por cuenta                                           |                                          |
+| Movimientos paginados con filtros de moneda, tipo, categoría y fecha · edición (no los pagos de deuda) | Bloqueo con biometría                    |
+| Historial de cambios y deudas (liquidadas tachadas)                                                    | Fuente Plus Jakarta Sans y pulido visual |
+| Colchón en días y topes del mes en Inicio (Fase 12)                                                    |                                          |
+| Pruebas con Jest y CI `mobile.yml`                                                                     | Maestro (E2E) y build del APK con EAS    |
 
 ## Desarrollo
 
