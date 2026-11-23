@@ -9,9 +9,10 @@ El panel web en el bolsillo: saldos y consolidado en USD, movimientos, cambios e
 | Login, registro y vinculación con el código de `/vincular`                                             |                                          |
 | Sesión en el llavero del teléfono (`expo-secure-store`, en trozos)                                     |                                          |
 | Inicio: consolidado en USD, mes en curso y saldos por cuenta                                           |                                          |
-| Movimientos paginados con filtros de moneda, tipo, categoría y fecha · edición (no los pagos de deuda) | Bloqueo con biometría                    |
+| Movimientos paginados con filtros de moneda, tipo, categoría y fecha · edición (no los pagos de deuda) |                                          |
 | Historial de cambios y deudas (liquidadas tachadas)                                                    | Fuente Plus Jakarta Sans y pulido visual |
 | Gráficas: categoría, semanas y bolívar (Victory Native 42 + Skia)                                      |
+| Bloqueo con huella, rostro o PIN al abrir y tras 30 s en segundo plano (Ajustes)                       |
 | Colchón en días y topes del mes en Inicio (Fase 12)                                                    |                                          |
 | Pruebas con Jest y CI `mobile.yml`                                                                     | Maestro (E2E) y build del APK con EAS    |
 
