@@ -1,28 +1,39 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { FlatList, RefreshControl, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { FilterSheet } from "@/components/filter-sheet";
 import { TransactionItem } from "@/components/transaction-item";
 import { Chip, Empty, ErrorState, Header, LinkBanner, Loading, styles } from "@/components/ui";
-import { CURRENCIES, CURRENCY_LABELS, type Currency } from "@/lib/format";
+import { sheetFilterCount, toQuery, type TxFilters } from "@/lib/filters";
+import { CURRENCIES, CURRENCY_LABELS } from "@/lib/format";
 import { useLinkedUser } from "@/lib/hooks";
-import { listTransactions, PAGE_SIZE } from "@/lib/queries";
+import { getCategories, listTransactions, PAGE_SIZE } from "@/lib/queries";
 import { colors } from "@/theme";
 
-/** Lista paginada de list_transactions con filtro por moneda. Editar queda en la web. */
+/** Lista paginada de list_transactions con los filtros de la web. Editar queda en la web. */
 export default function TransactionsScreen() {
   const user = useLinkedUser();
-  const [currency, setCurrency] = useState<Currency | undefined>();
+  const [filters, setFilters] = useState<TxFilters>({});
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const timeZone = user.data?.timezone ?? "America/Caracas";
+  const params = toQuery(filters, timeZone);
+  const categories = useQuery({
+    queryKey: ["categories"],
+    queryFn: getCategories,
+    enabled: Boolean(user.data),
+    staleTime: Infinity,
+  });
   const query = useInfiniteQuery({
-    queryKey: ["transactions", currency],
-    queryFn: ({ pageParam }) => listTransactions({ currency }, pageParam),
+    queryKey: ["transactions", params],
+    queryFn: ({ pageParam }) => listTransactions(params, pageParam),
     initialPageParam: 1,
     getNextPageParam: (last) => (last.page * PAGE_SIZE < last.total ? last.page + 1 : undefined),
     enabled: Boolean(user.data),
   });
   const rows = query.data?.pages.flatMap((p) => p.rows) ?? [];
-  const timeZone = user.data?.timezone ?? "America/Caracas";
+  const active = sheetFilterCount(filters);
 
   let empty;
   if (user.isPending || (user.data && query.isPending)) empty = <Loading />;
@@ -46,13 +57,22 @@ export default function TransactionsScreen() {
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={{ gap: 8 }}
               >
-                <Chip label="Todas" selected={!currency} onPress={() => setCurrency(undefined)} />
+                <Chip
+                  label={active ? `Filtros · ${active}` : "Filtros"}
+                  selected={active > 0}
+                  onPress={() => setSheetOpen(true)}
+                />
+                <Chip
+                  label="Todas"
+                  selected={!filters.currency}
+                  onPress={() => setFilters({ ...filters, currency: undefined })}
+                />
                 {CURRENCIES.map((c) => (
                   <Chip
                     key={c}
                     label={CURRENCY_LABELS[c]}
-                    selected={currency === c}
-                    onPress={() => setCurrency(c)}
+                    selected={filters.currency === c}
+                    onPress={() => setFilters({ ...filters, currency: c })}
                   />
                 ))}
               </ScrollView>
@@ -73,6 +93,13 @@ export default function TransactionsScreen() {
             tintColor={colors.lime}
           />
         }
+      />
+      <FilterSheet
+        visible={sheetOpen}
+        filters={filters}
+        categories={categories.data ?? []}
+        onChange={setFilters}
+        onClose={() => setSheetOpen(false)}
       />
     </SafeAreaView>
   );

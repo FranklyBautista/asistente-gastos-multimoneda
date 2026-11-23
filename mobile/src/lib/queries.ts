@@ -1,3 +1,4 @@
+import type { TxQuery } from "./filters";
 import { type Currency, isCurrency, isKind, type Kind } from "./format";
 import { supabase } from "./supabase";
 
@@ -152,13 +153,13 @@ export const PAGE_SIZE = 25;
 
 export type TransactionPage = { rows: TransactionRow[]; total: number; page: number };
 
-export async function listTransactions(
-  filters: { currency?: Currency; kind?: Kind },
-  page: number,
-): Promise<TransactionPage> {
+export async function listTransactions(filters: TxQuery, page: number): Promise<TransactionPage> {
   const { data, error } = await supabase.rpc("list_transactions", {
     p_currency: filters.currency,
     p_kind: filters.kind,
+    p_category_id: filters.categoryId,
+    p_from: filters.from,
+    p_to: filters.to,
     p_limit: PAGE_SIZE,
     p_offset: (page - 1) * PAGE_SIZE,
   });
@@ -180,6 +181,19 @@ export async function listTransactions(
       edited: r.edited,
     })),
   };
+}
+
+export type Category = { id: string; name: string; kind: Kind };
+
+/** Categorías del sistema y del usuario, como `getCategories()` de la web. */
+export async function getCategories(): Promise<Category[]> {
+  const { data, error } = await supabase
+    .from("categories")
+    .select("id, name, kind")
+    .order("kind")
+    .order("name");
+  if (error) throw new Error(`No se pudieron leer las categorías: ${error.message}`);
+  return data.map((c) => ({ id: c.id, name: c.name, kind: kind(c.kind) }));
 }
 
 // ---- Cambios entre monedas ----
