@@ -31,7 +31,13 @@
           "imageWidth": 76
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Usa Face ID para desbloquear tus finanzas."
+        }
+      ]
     ],
     "experiments": {
       "reactCompiler": true

@@ -1,3 +1,4 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { Link } from "expo-router";
 import type { ReactNode } from "react";
 import {
@@ -46,20 +47,43 @@ export function Screen({
           ) : undefined
         }
       >
-        <Header title={title} subtitle={subtitle} />
+        <Header title={title} subtitle={subtitle} settings />
         {children}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-export function Header({ title, subtitle }: { title: string; subtitle?: string }) {
+/** Título de la pantalla; con `settings`, el acceso a Ajustes a la derecha. */
+export function Header({
+  title,
+  subtitle,
+  settings = false,
+}: {
+  title: string;
+  subtitle?: string;
+  settings?: boolean;
+}) {
   return (
-    <View style={{ gap: 4 }}>
-      {subtitle ? <Text style={styles.muted}>{subtitle}</Text> : null}
-      <Text style={styles.title} accessibilityRole="header">
-        {title}
-      </Text>
+    <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 12 }}>
+      <View style={{ flex: 1, gap: 4 }}>
+        {subtitle ? <Text style={styles.muted}>{subtitle}</Text> : null}
+        <Text style={styles.title} accessibilityRole="header">
+          {title}
+        </Text>
+      </View>
+      {settings ? (
+        <Link href="/ajustes" asChild>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Ajustes"
+            hitSlop={8}
+            style={styles.iconButton}
+          >
+            <Ionicons name="settings-outline" size={22} color={colors.muted} />
+          </Pressable>
+        </Link>
+      ) : null}
     </View>
   );
 }
@@ -227,6 +251,14 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   chipText: { color: colors.foreground, fontSize: 13, fontWeight: "600" },
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.pill,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.chip,
+  },
   error: { color: colors.danger, fontSize: 14 },
   notice: { color: colors.limeSoft, fontSize: 14 },
 });

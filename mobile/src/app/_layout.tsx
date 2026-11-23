@@ -2,6 +2,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DarkTheme, Stack, ThemeProvider } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 
+import { LockScreen } from "@/components/lock-screen";
+import { AppLockProvider } from "@/lib/app-lock-provider";
 import { AuthProvider } from "@/lib/auth";
 import { colors } from "@/theme";
 
@@ -26,25 +28,29 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ThemeProvider value={theme}>
-          <StatusBar style="light" />
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(panel)" />
-            <Stack.Screen name="(cuenta)" />
-            <Stack.Screen
-              name="vincular"
-              options={{
-                headerShown: true,
-                title: "Vincular con Telegram",
-                presentation: "modal",
-              }}
-            />
-            <Stack.Screen
-              name="editar/[id]"
-              options={{ headerShown: true, title: "Editar movimiento" }}
-            />
-          </Stack>
-        </ThemeProvider>
+        <AppLockProvider>
+          <ThemeProvider value={theme}>
+            <StatusBar style="light" />
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(panel)" />
+              <Stack.Screen name="(cuenta)" />
+              <Stack.Screen
+                name="vincular"
+                options={{
+                  headerShown: true,
+                  title: "Vincular con Telegram",
+                  presentation: "modal",
+                }}
+              />
+              <Stack.Screen
+                name="editar/[id]"
+                options={{ headerShown: true, title: "Editar movimiento" }}
+              />
+              <Stack.Screen name="ajustes" options={{ headerShown: true, title: "Ajustes" }} />
+            </Stack>
+            <LockScreen />
+          </ThemeProvider>
+        </AppLockProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

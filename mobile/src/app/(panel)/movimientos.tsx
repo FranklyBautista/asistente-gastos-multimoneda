@@ -51,7 +51,7 @@ export default function TransactionsScreen() {
         contentContainerStyle={[styles.content, { gap: 10 }]}
         ListHeaderComponent={
           <View style={{ gap: 16, marginBottom: 6 }}>
-            <Header title="Movimientos" />
+            <Header title="Movimientos" settings />
             {user.data ? (
               <ScrollView
                 horizontal
