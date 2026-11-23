@@ -1,16 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { StyleSheet, Text, View } from "react-native";
 
-import { Button, Card, ErrorState, LinkBanner, Loading, Screen, styles } from "@/components/ui";
-import {
-  CURRENCY_LABELS,
-  formatAmount,
-  formatUsd,
-  localToday,
-  RATE_SOURCE_LABELS,
-} from "@/lib/format";
+import { AccountCard } from "@/components/currency";
+import { BudgetsCard, RunwayCard } from "@/components/habits";
+import { Button, ErrorState, LinkBanner, Loading, Screen, styles } from "@/components/ui";
+import { formatMonth, formatUsd, localToday, RATE_SOURCE_LABELS } from "@/lib/format";
+import { daysLeftInMonth, runway } from "@/lib/habits";
 import { useLinkedUser } from "@/lib/hooks";
-import { type Balance, getBalances, getPeriodTotals } from "@/lib/queries";
+import {
+  type Balance,
+  type BudgetRow,
+  getBalances,
+  getBudgets,
+  getPeriodTotals,
+  getSpendingPace,
+} from "@/lib/queries";
 import { supabase } from "@/lib/supabase";
 import { colors } from "@/theme";
 
@@ -25,14 +29,14 @@ export default function HomeScreen() {
     queryFn: () => getPeriodTotals(`${today.slice(0, 8)}01`, today),
     enabled: linked,
   });
+  const budgets = useQuery({ queryKey: ["budgets", today], queryFn: getBudgets, enabled: linked });
+  const pace = useQuery({ queryKey: ["pace", today], queryFn: getSpendingPace, enabled: linked });
 
-  const refreshing = user.isRefetching || balances.isRefetching || month.isRefetching;
+  const queries = [balances, month, budgets, pace];
+  const refreshing = user.isRefetching || queries.some((q) => q.isRefetching);
   function refresh() {
     void user.refetch();
-    if (linked) {
-      void balances.refetch();
-      void month.refetch();
-    }
+    if (linked) for (const q of queries) void q.refetch();
   }
 
   let body;
@@ -43,7 +47,14 @@ export default function HomeScreen() {
   else if (balances.isError) body = <ErrorState onRetry={refresh} />;
   else {
     body = (
-      <Overview balances={balances.data} month={month.data} vesSource={user.data.vesRateSource} />
+      <Overview
+        balances={balances.data}
+        month={month.data}
+        vesSource={user.data.vesRateSource}
+        pace={pace.data}
+        budgets={budgets.data}
+        today={today}
+      />
     );
   }
 
@@ -64,10 +75,16 @@ function Overview({
   balances,
   month,
   vesSource,
+  pace,
+  budgets,
+  today,
 }: {
   balances: Balance[];
   month: { incomeUsd: number; expensesUsd: number } | undefined;
   vesSource: string;
+  pace: { windowDays: number | null; expensesUsd: number } | undefined;
+  budgets: BudgetRow[] | undefined;
+  today: string;
 }) {
   // Igual que la web: suma de los equivalentes que ya calculó la vista account_balances_usd.
   const totalUsd = balances.reduce((sum, b) => sum + (b.balanceUsd ?? 0), 0);
@@ -97,40 +114,31 @@ function Overview({
         ) : null}
         {month ? (
           <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
-            <MonthStat label="Ingresos del mes" value={formatUsd(month.incomeUsd)} />
-            <MonthStat label="Gastos del mes" value={formatUsd(month.expensesUsd)} />
+            <MonthStat
+              label={`Ingresos de ${formatMonth(today)}`}
+              value={formatUsd(month.incomeUsd)}
+            />
+            <MonthStat
+              label={`Gastos de ${formatMonth(today)}`}
+              value={formatUsd(month.expensesUsd)}
+            />
           </View>
         ) : null}
       </View>
+
+      {pace ? <RunwayCard result={runway(totalUsd, pace.expensesUsd, pace.windowDays)} /> : null}
+      {budgets ? <BudgetsCard rows={budgets} daysLeft={daysLeftInMonth(today)} /> : null}
 
       <Text style={styles.subtitle} accessibilityRole="header">
         Tus cuentas
       </Text>
       <View style={{ gap: 10 }}>
         {balances.map((b) => (
-          <Card
-            key={b.accountId}
-            style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}
-          >
-            <Text style={[styles.body, { flexShrink: 1 }]} numberOfLines={1}>
-              {b.name}
-            </Text>
-            <View style={{ alignItems: "flex-end" }}>
-              <Text style={[styles.body, { fontWeight: "700" }]}>
-                {formatAmount(b.balance, b.currency)} {CURRENCY_LABELS[b.currency]}
-              </Text>
-              <Text style={styles.faint}>{usdNote(b)}</Text>
-            </View>
-          </Card>
+          <AccountCard key={b.accountId} b={b} totalUsd={totalUsd} />
         ))}
       </View>
     </>
   );
-}
-
-function usdNote(b: Balance): string {
-  if (b.currency === "USD") return "Base";
-  return b.balanceUsd === null ? "Sin tasa" : `≈ ${formatUsd(b.balanceUsd)}`;
 }
 
 function MonthStat({ label, value }: { label: string; value: string }) {

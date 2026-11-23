@@ -102,6 +102,37 @@ export async function getPeriodTotals(
   };
 }
 
+// ---- Hábitos (Fase 12) ----
+
+export type BudgetRow = { id: string; category: string; limitUsd: number; spentUsd: number };
+
+/** Topes vigentes con lo gastado en el mes local en curso (vista `budget_progress`). */
+export async function getBudgets(): Promise<BudgetRow[]> {
+  const { data, error } = await supabase.from("budget_progress").select("*").order("category");
+  if (error) throw new Error(`No se pudieron leer los topes: ${error.message}`);
+  return data.map((r) => ({
+    id: String(r.budget_id),
+    category: String(r.category),
+    limitUsd: Number(r.limit_usd),
+    spentUsd: Number(r.spent_usd ?? 0),
+  }));
+}
+
+/** Ritmo de gasto para el colchón: días de historial usados (null sin movimientos) y su gasto. */
+export async function getSpendingPace(): Promise<{
+  windowDays: number | null;
+  expensesUsd: number;
+}> {
+  const { data, error } = await supabase.rpc("spending_pace", { p_days: 90 });
+  if (error) throw new Error(`No se pudo leer el ritmo de gasto: ${error.message}`);
+  // Sin movimientos la función devuelve nulls aunque los tipos generados digan number.
+  const row = data[0] as { window_days: number | null; expenses_usd: number | null } | undefined;
+  return {
+    windowDays: row?.window_days ?? null,
+    expensesUsd: Number(row?.expenses_usd ?? 0),
+  };
+}
+
 // ---- Movimientos ----
 
 export type TransactionRow = {

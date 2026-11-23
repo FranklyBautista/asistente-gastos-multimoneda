@@ -25,6 +25,33 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"budgets": {
+                  Row: {
+                    "archived_at": string | null,"category_id": string,"created_at": string,"id": string,"limit_usd": number,"raw_text": string | null,"replaces_id": string | null,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "archived_at"?: string | null,"category_id": string,"created_at"?: string,"id"?: string,"limit_usd": number,"raw_text"?: string | null,"replaces_id"?: string | null,"user_id": string
+                  }
+                  Update: {
+                    "archived_at"?: string | null,"category_id"?: string,"created_at"?: string,"id"?: string,"limit_usd"?: number,"raw_text"?: string | null,"replaces_id"?: string | null,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "budgets_category_id_fkey"
+      columns: ["category_id"]
+isOneToOne: false
+      referencedRelation: "categories"
+      referencedColumns: ["id"]
+    },
+                    {
+      foreignKeyName: "budgets_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "users"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"categories": {
                   Row: {
                     "id": string,"kind": string,"name": string,"user_id": string | null
@@ -267,14 +294,14 @@ isOneToOne: false
                   ]
                 },"users": {
                   Row: {
-                    "auth_user_id": string | null,"created_at": string,"default_currency": string,"display_name": string | null,"id": string,"onboarded_at": string | null,"telegram_id": number,"timezone": string,"ves_rate_source": string
+                    "auth_user_id": string | null,"context_replies": boolean,"created_at": string,"default_currency": string,"display_name": string | null,"id": string,"onboarded_at": string | null,"telegram_id": number,"timezone": string,"ves_rate_source": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "auth_user_id"?: string | null,"created_at"?: string,"default_currency"?: string,"display_name"?: string | null,"id"?: string,"onboarded_at"?: string | null,"telegram_id": number,"timezone"?: string,"ves_rate_source"?: string
+                    "auth_user_id"?: string | null,"context_replies"?: boolean,"created_at"?: string,"default_currency"?: string,"display_name"?: string | null,"id"?: string,"onboarded_at"?: string | null,"telegram_id": number,"timezone"?: string,"ves_rate_source"?: string
                   }
                   Update: {
-                    "auth_user_id"?: string | null,"created_at"?: string,"default_currency"?: string,"display_name"?: string | null,"id"?: string,"onboarded_at"?: string | null,"telegram_id"?: number,"timezone"?: string,"ves_rate_source"?: string
+                    "auth_user_id"?: string | null,"context_replies"?: boolean,"created_at"?: string,"default_currency"?: string,"display_name"?: string | null,"id"?: string,"onboarded_at"?: string | null,"telegram_id"?: number,"timezone"?: string,"ves_rate_source"?: string
                   }
                   Relationships: [
                     
@@ -327,6 +354,13 @@ isOneToOne: false
                     "account_id": string | null,"balance": number | null,"balance_usd": number | null,"currency": string | null,"name": string | null,"rate_fetched_at": string | null,"rate_source": string | null,"rate_stale": boolean | null,"usd_per_unit": number | null
                   }
                   ComputedFields: never
+                  Relationships: [
+                    
+                  ]
+                },"budget_progress": {
+                  Row: {
+                    "budget_id": string | null,"category": string | null,"category_id": string | null,"limit_usd": number | null,"month_start": string | null,"remaining_usd": number | null,"spent_usd": number | null,"user_id": string | null
+                  }
                   Relationships: [
                     
                   ]
@@ -399,6 +433,11 @@ isOneToOne: false
 "spending_by_week":
 { Args: { "p_weeks"?: number }; Returns: {
               "expenses_usd": number,"income_usd": number,"week_start": string
+            }[]
+                           },
+"spending_pace":
+{ Args: { "p_days"?: number }; Returns: {
+              "expenses_usd": number,"window_days": number
             }[]
                            }
           }
