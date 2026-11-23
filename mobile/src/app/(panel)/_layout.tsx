@@ -19,7 +19,7 @@ function icon(name: IconName) {
   return TabIcon;
 }
 
-/** Las cuatro secciones del panel; sin sesión, al login. */
+/** Las cinco secciones del panel; sin sesión, al login. */
 export default function PanelLayout() {
   const { session, loading } = useAuth();
   if (loading) return <Loading />;
@@ -37,6 +37,10 @@ export default function PanelLayout() {
       <Tabs.Screen
         name="movimientos"
         options={{ title: "Movimientos", tabBarIcon: icon("list-outline") }}
+      />
+      <Tabs.Screen
+        name="graficas"
+        options={{ title: "Gráficas", tabBarIcon: icon("bar-chart-outline") }}
       />
       <Tabs.Screen
         name="cambios"

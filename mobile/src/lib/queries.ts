@@ -276,6 +276,40 @@ export async function editTransaction(edit: {
   return data;
 }
 
+// ---- Gráficas ----
+
+export type CategorySpending = { category: string; totalUsd: number; movements: number };
+export type WeekSpending = { weekStart: string; expensesUsd: number; incomeUsd: number };
+export type BolivarRate = { day: string; source: string; usdPerUnit: number };
+
+/** Gasto en USD por categoría entre dos días locales (incluidos), de mayor a menor. */
+export async function getSpendingByCategory(from: string, to: string): Promise<CategorySpending[]> {
+  const { data, error } = await supabase.rpc("spending_by_category", { p_from: from, p_to: to });
+  if (error) throw new Error(`No se pudo leer el gasto por categoría: ${error.message}`);
+  return data.map((r) => ({
+    category: r.category,
+    totalUsd: Number(r.total_usd),
+    movements: Number(r.movements),
+  }));
+}
+
+export async function getSpendingByWeek(weeks: number): Promise<WeekSpending[]> {
+  const { data, error } = await supabase.rpc("spending_by_week", { p_weeks: weeks });
+  if (error) throw new Error(`No se pudo leer el gasto por semana: ${error.message}`);
+  return data.map((r) => ({
+    weekStart: r.week_start,
+    expensesUsd: Number(r.expenses_usd),
+    incomeUsd: Number(r.income_usd),
+  }));
+}
+
+/** Última tasa de cada día con la fuente del usuario. */
+export async function getBolivarRates(days: number): Promise<BolivarRate[]> {
+  const { data, error } = await supabase.rpc("bolivar_rates", { p_days: days });
+  if (error) throw new Error(`No se pudo leer la tasa del bolívar: ${error.message}`);
+  return data.map((r) => ({ day: r.day, source: r.source, usdPerUnit: Number(r.usd_per_unit) }));
+}
+
 // ---- Cambios entre monedas ----
 
 export type ExchangeRow = {
