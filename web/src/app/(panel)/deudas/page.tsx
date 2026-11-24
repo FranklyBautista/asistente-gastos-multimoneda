@@ -89,7 +89,7 @@ async function Debts({ searchParams }: Pick<PageProps<"/deudas">, "searchParams"
 
   return (
     <>
-      <section aria-label="Total pendiente" className="grid gap-2.5 sm:grid-cols-2">
+      <section aria-label="Total pendiente" className="grid grid-cols-2 gap-2.5">
         <TotalCard title="Debes" totals={owe} empty="No le debes nada a nadie." />
         <TotalCard title="Te deben" totals={owed} empty="Nadie te debe nada." />
       </section>
@@ -189,14 +189,17 @@ function TotalCard({
   empty: string;
 }) {
   return (
-    <div className="glass flex flex-col gap-1.5 rounded-[22px] px-5 py-4">
+    <div className="glass flex min-w-0 flex-col gap-1.5 rounded-3xl px-4 py-4 sm:px-5">
       <p className="text-[13px] font-semibold text-muted">{title}</p>
       {totals.length === 0 ? (
         <p className="text-sm text-muted">{empty}</p>
       ) : (
         <ul className="flex flex-col">
           {totals.map(([c, amount]) => (
-            <li key={c} className="text-[22px] leading-tight font-extrabold tracking-tight">
+            <li
+              key={c}
+              className="text-lg leading-tight font-extrabold tracking-tight sm:text-[22px]"
+            >
               {formatAmount(amount, c)}{" "}
               <span className="text-sm font-bold text-muted">{CURRENCY_LABELS[c]}</span>
             </li>
@@ -212,13 +215,9 @@ function DebtItem({ debt: d, timeZone }: { debt: DebtRow; timeZone: string }) {
   const money = `${formatAmount(d.amount, d.currency)} ${CURRENCY_LABELS[d.currency]}`;
   const who = d.direction === "i_owe" ? `Le debes ${money} a ${d.counterparty}` : null;
   return (
-    <li
-      className={
-        "glass flex flex-col gap-1.5 rounded-[20px] px-4 py-3.5 " + (done ? "opacity-60" : "")
-      }
-    >
+    <li className={"glass flex flex-col gap-1.5 rounded-[18px] px-4 py-3.5"}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className={"text-[15px] font-bold " + (done ? "line-through" : "")}>
+        <span className={"text-[15px] font-bold " + (done ? "text-muted line-through" : "")}>
           {who ?? `${d.counterparty} te debe ${money}`}
         </span>
         <span

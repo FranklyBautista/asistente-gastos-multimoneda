@@ -16,7 +16,8 @@ import {
 /**
  * Gráficas de una sola serie: un solo color (validado para modo claro y oscuro en
  * globals.css: --chart-mark), sin leyenda porque el título dice qué se muestra. El texto
- * usa tonos neutros, nunca el color de la serie. Cada gráfica tiene su tabla en la página.
+ * usa tonos neutros, nunca el color de la serie. Cada gráfica tiene su tabla en la página
+ * («Ver datos»), así que el SVG va oculto a lectores y sin foco (accessibilityLayer={false}).
  */
 const MARK = "var(--chart-mark)";
 const GRID = "var(--chart-grid)";
@@ -64,7 +65,12 @@ export function CategoryChart({ data }: { data: { category: string; totalUsd: nu
   return (
     <div aria-hidden="true" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} layout="vertical" margin={{ top: 4, right: 72, bottom: 4, left: 8 }}>
+        <BarChart
+          accessibilityLayer={false}
+          data={data}
+          layout="vertical"
+          margin={{ top: 4, right: 72, bottom: 4, left: 8 }}
+        >
           <XAxis type="number" hide />
           <YAxis
             type="category"
@@ -93,7 +99,11 @@ export function WeeklyChart({ data }: { data: { weekStart: string; expensesUsd: 
   return (
     <div aria-hidden="true" className="h-56">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+        <BarChart
+          accessibilityLayer={false}
+          data={data}
+          margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
+        >
           <CartesianGrid vertical={false} stroke={GRID} />
           <XAxis
             dataKey="weekStart"
@@ -127,7 +137,11 @@ export function BolivarChart({ data }: { data: { day: string; bsPerUsd: number }
   return (
     <div aria-hidden="true" className="h-56">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+        <LineChart
+          accessibilityLayer={false}
+          data={data}
+          margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
+        >
           <CartesianGrid vertical={false} stroke={GRID} />
           <XAxis
             dataKey="day"

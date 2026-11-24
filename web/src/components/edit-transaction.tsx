@@ -7,6 +7,9 @@ import { ArrowInIcon, ArrowOutIcon, SendIcon } from "@/components/icons";
 import type { Account, Category, EditableTransaction } from "@/lib/data";
 import { CURRENCY_LABELS, type Kind, KIND_LABELS } from "@/lib/format";
 
+/** Categorías globales de la liquidación de deudas (migración debt_categories). */
+const DEBT_CATEGORIES = ["pago de deudas", "cobro de deudas"];
+
 const field =
   "rounded-[18px] border border-line bg-[linear-gradient(180deg,rgba(22,40,26,.8),rgba(9,18,11,.9))]";
 
@@ -29,7 +32,12 @@ export function EditTransactionForm({
   const [kind, setKind] = useState<Kind>(transaction.kind);
   const [accountId, setAccountId] = useState(transaction.accountId);
   const currency = accounts.find((a) => a.id === accountId)?.currency ?? transaction.currency;
-  const options = categories.filter((c) => c.kind === kind);
+  // Las categorías de deudas solo las usa el bot al liquidar (ADR 0016): no se ofrecen, salvo
+  // que el movimiento ya esté en una (el gasto que nació de pagar una deuda).
+  const options = categories.filter(
+    (c) =>
+      c.kind === kind && (!DEBT_CATEGORIES.includes(c.name) || c.id === transaction.categoryId),
+  );
   // Al cambiar de tipo, la categoría anterior deja de servir: se propone la primera.
   const current = options.some((c) => c.id === transaction.categoryId)
     ? (transaction.categoryId ?? undefined)
@@ -37,14 +45,11 @@ export function EditTransactionForm({
 
   return (
     <form action={action} className="flex flex-col gap-3">
-      <section className="flex flex-col items-center gap-3.5 rounded-[26px] border border-lime/20 bg-[linear-gradient(180deg,#0f1e12,#070e08)] p-5 shadow-[0_0_40px_-10px_rgba(141,251,134,.25),inset_0_1px_0_rgba(255,255,255,.05)]">
-        <label
-          htmlFor="monto"
-          className="text-[11px] font-bold tracking-[.08em] text-muted uppercase"
-        >
+      <section className="flex flex-col items-center gap-3.5 rounded-3xl border border-lime/20 bg-[linear-gradient(180deg,#0f1e12,#070e08)] p-5 shadow-[0_0_40px_-10px_rgba(141,251,134,.25),inset_0_1px_0_rgba(255,255,255,.05)]">
+        <label htmlFor="monto" className="text-xs font-bold tracking-[.08em] text-muted uppercase">
           Monto
         </label>
-        <div className="flex items-baseline justify-center gap-2">
+        <div className="flex items-baseline justify-center gap-2 rounded-2xl px-3 has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-lime">
           <span className="text-lg font-bold text-lime-soft">{CURRENCY_LABELS[currency]}</span>
           <input
             id="monto"
@@ -87,11 +92,13 @@ export function EditTransactionForm({
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className={`${field} flex flex-col gap-0.5 px-4 py-2.5`}>
-          <span className="text-[11px] text-muted">Fecha</span>
+          <span className="text-xs text-muted">Fecha</span>
           <span className="text-sm font-semibold">{dateLabel}</span>
         </div>
-        <label className={`${field} flex flex-col gap-0.5 px-4 py-2.5`}>
-          <span className="text-[11px] text-muted">Cuenta (define la moneda)</span>
+        <label
+          className={`${field} flex flex-col gap-0.5 px-4 py-2.5 has-[select:focus-visible]:outline-2 has-[select:focus-visible]:outline-offset-2 has-[select:focus-visible]:outline-lime`}
+        >
+          <span className="text-xs text-muted">Cuenta (define la moneda)</span>
           <select
             className="h-7 bg-transparent text-sm font-semibold outline-none"
             name="account"
@@ -108,7 +115,7 @@ export function EditTransactionForm({
       </div>
 
       <fieldset key={kind} className={`${field} flex flex-col gap-2.5 px-4 pt-2.5 pb-3.5`}>
-        <legend className="float-left mb-1 text-[11px] text-muted">Categoría</legend>
+        <legend className="float-left mb-1 text-xs text-muted">Categoría</legend>
         <div className="clear-left flex flex-wrap gap-2">
           {options.map((c) => (
             <label key={c.id} className="relative">

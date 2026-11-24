@@ -48,7 +48,10 @@ async function Exchanges() {
       {average !== null ? (
         <section
           aria-label="Diferencia promedio"
-          className="hero-lime flex flex-col gap-2 rounded-[26px] p-5"
+          className={
+            // Verde solo cuando el promedio te favorece: un promedio en contra no se celebra.
+            (average >= 0 ? "hero-lime" : "glass") + " flex flex-col gap-2 rounded-3xl p-5"
+          }
         >
           <p className="text-[13px] font-semibold opacity-80">
             Diferencia promedio contra la tasa de referencia
@@ -91,7 +94,7 @@ async function Exchanges() {
 function ExchangeItem({ exchange: e, timeZone }: { exchange: ExchangeRow; timeZone: string }) {
   const diff = e.differencePct;
   return (
-    <li className="glass flex flex-col gap-2.5 rounded-[20px] px-4 py-3.5">
+    <li className="glass flex flex-col gap-2.5 rounded-[18px] px-4 py-3.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="flex flex-wrap items-center gap-x-2 text-[15px] font-bold">
           <span>

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { BalanceOrbit, groupByCurrency } from "@/components/balance-orbit";
+import { AccountCard, CURRENCY_ACCENT, CurrencyIcon } from "@/components/currency";
 import { AlertIcon, ArrowInIcon, ArrowOutIcon, ArrowRightIcon, SendIcon } from "@/components/icons";
 import { Card, Empty, LinkBanner, Loading } from "@/components/panel";
 import { TransactionItem } from "@/components/transactions";
@@ -14,8 +16,8 @@ import {
 import {
   CURRENCY_LABELS,
   type Currency,
-  formatAmount,
   formatDateTime,
+  formatMonth,
   formatRate,
   formatUsd,
   localToday,
@@ -77,6 +79,7 @@ async function Overview() {
   const rates = uniqueRates(balances);
   const stale = rates.filter((r) => r.rateStale);
   const vesSource = RATE_SOURCE_LABELS[user.vesRateSource] ?? user.vesRateSource;
+  const groups = groupByCurrency(balances, totalUsd);
 
   return (
     <>
@@ -95,39 +98,36 @@ async function Overview() {
         </p>
       </header>
 
-      <section
-        aria-label="Consolidado en USD"
-        className="hero-lime flex flex-col gap-4 rounded-[26px] p-5"
-      >
-        <div className="flex flex-col gap-1">
-          <p className="text-[13px] font-semibold opacity-80">Consolidado en USD</p>
-          <p
-            className="text-[38px] leading-tight font-extrabold tracking-tight"
-            data-testid="total-usd"
-          >
-            {formatUsd(totalUsd)}
+      <section aria-label="Saldo consolidado" className="flex flex-col gap-4">
+        <BalanceOrbit groups={groups} totalUsd={totalUsd} />
+        <p className="text-center text-xs text-muted">
+          Toca una moneda para ver su saldo y sus movimientos. {balances.length}{" "}
+          {balances.length === 1 ? "cuenta" : "cuentas"}, cada una con la tasa vigente de su fuente
+          (los Bs con la tuya: {vesSource}).
+        </p>
+        {unpriced.length > 0 ? (
+          <p role="status" className="flex items-start gap-1.5 text-[13px] font-semibold text-warn">
+            <AlertIcon className="mt-px size-4 flex-none" />
+            Sin tasa todavía para {unpriced.map((b) => b.name).join(", ")}: no suma al total.
           </p>
-          <p className="text-xs font-medium opacity-80">
-            {balances.length} {balances.length === 1 ? "cuenta" : "cuentas"} · cada saldo con la
-            tasa vigente de su fuente (los Bs con la tuya: {vesSource})
+        ) : null}
+        {stale.length > 0 ? (
+          <p role="status" className="flex items-start gap-1.5 text-[13px] font-semibold text-warn">
+            <AlertIcon className="mt-px size-4 flex-none" />
+            Tasa vieja (más de 6 horas sin actualizar):{" "}
+            {stale.map((r) => RATE_SOURCE_LABELS[r.rateSource ?? ""] ?? r.rateSource).join(", ")}.
           </p>
-          {unpriced.length > 0 ? (
-            <p role="status" className="mt-1 flex items-start gap-1.5 text-[13px] font-semibold">
-              <AlertIcon className="mt-px size-4 flex-none" />
-              Sin tasa todavía para {unpriced.map((b) => b.name).join(", ")}: no suma al total.
-            </p>
-          ) : null}
-          {stale.length > 0 ? (
-            <p role="status" className="mt-1 flex items-start gap-1.5 text-[13px] font-semibold">
-              <AlertIcon className="mt-px size-4 flex-none" />
-              Tasa vieja (más de 6 horas sin actualizar):{" "}
-              {stale.map((r) => RATE_SOURCE_LABELS[r.rateSource ?? ""] ?? r.rateSource).join(", ")}.
-            </p>
-          ) : null}
-        </div>
+        ) : null}
         <div className="grid grid-cols-2 gap-2.5">
-          <MonthStat label="Ingresos del mes" value={formatUsd(month.incomeUsd)} income />
-          <MonthStat label="Gastos del mes" value={formatUsd(month.expensesUsd)} />
+          <MonthStat
+            label={`Ingresos de ${formatMonth(today)}`}
+            value={formatUsd(month.incomeUsd)}
+            income
+          />
+          <MonthStat
+            label={`Gastos de ${formatMonth(today)}`}
+            value={formatUsd(month.expensesUsd)}
+          />
         </div>
       </section>
 
@@ -140,25 +140,7 @@ async function Overview() {
           className="scrollbar-none -mx-5 flex gap-2.5 overflow-x-auto px-5 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible md:grid-cols-4 sm:px-0"
         >
           {balances.map((b) => (
-            <li
-              key={b.accountId}
-              className="glass flex min-w-36 flex-none flex-col gap-1.5 rounded-[20px] p-3.5"
-            >
-              <span className="truncate text-xs text-muted">{b.name}</span>
-              <span className="text-base font-bold">
-                {formatAmount(b.balance, b.currency)}{" "}
-                <span className="text-[11px] font-semibold text-muted">
-                  {CURRENCY_LABELS[b.currency]}
-                </span>
-              </span>
-              {b.currency !== "USD" && b.balanceUsd !== null ? (
-                <span className="text-[11px] text-faint">≈ {formatUsd(b.balanceUsd)}</span>
-              ) : (
-                <span className="text-[11px] text-faint">
-                  {b.currency === "USD" ? "Base" : "Sin tasa"}
-                </span>
-              )}
-            </li>
+            <AccountCard key={b.accountId} b={b} totalUsd={totalUsd} />
           ))}
         </ul>
       </section>
@@ -191,10 +173,18 @@ async function Overview() {
         <Card title="Tasas usadas">
           <ul className="flex flex-col gap-2.5 text-sm">
             {rates.map((r) => (
-              <li key={r.currency} className="flex flex-wrap justify-between gap-x-4 gap-y-0.5">
-                <span className="text-muted">
-                  {CURRENCY_LABELS[r.currency]} ·{" "}
-                  {RATE_SOURCE_LABELS[r.rateSource ?? ""] ?? r.rateSource}
+              <li
+                key={r.currency}
+                className="flex flex-wrap items-center justify-between gap-x-4 gap-y-0.5"
+              >
+                <span className="flex items-center gap-2 text-muted">
+                  <CurrencyIcon currency={r.currency} className="size-6" />
+                  <span>
+                    <span className="font-semibold" style={{ color: CURRENCY_ACCENT[r.currency] }}>
+                      {CURRENCY_LABELS[r.currency]}
+                    </span>{" "}
+                    · {RATE_SOURCE_LABELS[r.rateSource ?? ""] ?? r.rateSource}
+                  </span>
                 </span>
                 <span className="font-semibold">
                   {describeRate(r.currency, r.usdPerUnit ?? 0)}
@@ -242,7 +232,7 @@ function MonthStat({
         )}
       </span>
       <span className="flex min-w-0 flex-col">
-        <span className="text-[11px] text-muted">{label}</span>
+        <span className="text-xs text-muted">{label}</span>
         <span className="truncate text-sm font-bold">{value}</span>
       </span>
     </div>

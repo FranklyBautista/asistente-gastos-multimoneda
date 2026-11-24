@@ -20,11 +20,20 @@ export function LinkBanner() {
   );
 }
 
+/**
+ * Esqueleto mientras llegan los datos: la forma de las pantallas del panel (un bloque
+ * grande y filas), para que el contenido no salte al aparecer. El texto es para lectores.
+ */
 export function Loading() {
+  const block = "rounded-3xl bg-white/[0.05] motion-safe:animate-pulse";
   return (
-    <p className="text-sm text-muted" role="status">
-      Cargando…
-    </p>
+    <div role="status" className="flex flex-col gap-2.5">
+      <span className="sr-only">Cargando…</span>
+      <div aria-hidden="true" className={`${block} h-36`} />
+      {[0, 1, 2].map((i) => (
+        <div key={i} aria-hidden="true" className={`${block} h-[72px] rounded-[18px]`} />
+      ))}
+    </div>
   );
 }
 

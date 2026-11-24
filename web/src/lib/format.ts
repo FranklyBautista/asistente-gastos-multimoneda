@@ -78,8 +78,26 @@ export function formatDay(day: string, style: "short" | "medium" = "short"): str
   }).format(new Date(Date.UTC(y, m - 1, d)));
 }
 
+/** Nombre del mes de un día `YYYY-MM-DD`, en minúscula: "noviembre". */
+export function formatMonth(day: string): string {
+  const [y, m] = day.split("-").map(Number);
+  return new Intl.DateTimeFormat("es-VE", { month: "long", timeZone: "UTC" }).format(
+    new Date(Date.UTC(y, m - 1, 1)),
+  );
+}
+
 /** Hoy en la zona del usuario, como `YYYY-MM-DD`. */
 export function localToday(timeZone: string, offsetDays = 0): string {
   const now = new Date(Date.now() + offsetDays * 86_400_000);
   return new Intl.DateTimeFormat("en-CA", { timeZone }).format(now);
+}
+
+/** Fecha corta de un movimiento en la zona del usuario: "Hoy, 14:32", "Ayer, 18:15", "20 nov, 10:05". */
+export function formatMovementDate(iso: string, timeZone: string): string {
+  const date = new Date(iso);
+  const day = new Intl.DateTimeFormat("en-CA", { timeZone }).format(date);
+  const time = new Intl.DateTimeFormat("es-VE", { timeStyle: "short", timeZone }).format(date);
+  if (day === localToday(timeZone)) return `Hoy, ${time}`;
+  if (day === localToday(timeZone, -1)) return `Ayer, ${time}`;
+  return `${formatDay(day)}, ${time}`;
 }

@@ -8,7 +8,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
         <span className="grid size-14 -rotate-[14deg] place-items-center rounded-[18px] border border-line bg-[linear-gradient(160deg,#1b3620,#0b160d)] text-lime-soft shadow-[0_10px_24px_rgba(0,0,0,.45)]">
           <PieIcon className="size-6" strokeWidth={1.8} />
         </span>
-        <span className="grid size-22 place-items-center rounded-[26px] border border-lime/45 bg-[linear-gradient(160deg,#234a29,#0e1c11)] text-[#d9ffd5] shadow-[0_0_40px_rgba(141,251,134,.35),inset_0_1px_0_rgba(255,255,255,.12)]">
+        <span className="grid size-22 place-items-center rounded-3xl border border-lime/45 bg-[linear-gradient(160deg,#234a29,#0e1c11)] text-[#d9ffd5] shadow-[0_0_40px_rgba(141,251,134,.35),inset_0_1px_0_rgba(255,255,255,.12)]">
           <WalletIcon className="size-9" strokeWidth={1.7} />
         </span>
         <span className="grid size-14 rotate-[14deg] place-items-center rounded-[18px] border border-line bg-[linear-gradient(160deg,#1b3620,#0b160d)] text-lime-soft shadow-[0_10px_24px_rgba(0,0,0,.45)]">
