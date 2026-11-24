@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 
 import { BolivarChart, CategoryChart, WeeklyChart } from "@/components/charts";
+import { ChevronRightIcon } from "@/components/icons";
 import { Card, Chip, Empty, LinkBanner, Loading } from "@/components/panel";
 import {
   getBalances,
@@ -39,8 +40,9 @@ export default function ChartsPage({ searchParams }: PageProps<"/graficas">) {
 /** Tabla con los mismos datos de la gráfica: la alternativa textual (y para lectores). */
 function DataTable({ headers, rows }: { headers: [string, string]; rows: [string, string][] }) {
   return (
-    <details className="text-sm">
-      <summary className="cursor-pointer text-[13px] font-semibold text-lime hover:text-lime-soft">
+    <details className="group text-sm">
+      <summary className="flex [&::-webkit-details-marker]:hidden min-h-11 w-fit cursor-pointer list-none items-center gap-1.5 text-[13px] font-semibold text-lime hover:text-lime-soft">
+        <ChevronRightIcon className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none" />
         Ver datos
       </summary>
       <table className="mt-2 w-full text-left">

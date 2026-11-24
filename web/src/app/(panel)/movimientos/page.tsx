@@ -145,7 +145,7 @@ async function Transactions({ searchParams }: Pick<PageProps<"/movimientos">, "s
           <FilterIcon className="size-[18px] text-muted" />
           Más filtros
           {extra > 0 ? (
-            <span className="grid size-5 place-items-center rounded-full bg-lime text-[11px] font-extrabold text-on-lime">
+            <span className="grid size-5 place-items-center rounded-full bg-lime text-xs font-extrabold text-on-lime">
               {extra}
             </span>
           ) : null}

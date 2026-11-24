@@ -5,7 +5,7 @@ Para quien vive con varias monedas a la vez. Le escribes a un bot de Telegram co
 - **Bot:** [@frankly_gastos_bot](https://t.me/frankly_gastos_bot) (acceso por lista blanca).
 - **Web:** <https://asistente-gastos-multimoneda.vercel.app>.
 
-> Estado: **Fase 12**, hábitos: topes por categoría, colchón en días y contexto al anotar (rama `fase-12/habitos`; falta la parte web). Pendiente: Fase 13, app móvil.
+> Estado: **Fase 12**, hábitos: topes por categoría, colchón en días y contexto al anotar (en producción; falta la parte web). **Fase 13**, app móvil: MVP en Expo en [`mobile/`](mobile/README.md) (saldos, movimientos, cambios y deudas).
 
 ## Qué hace
 
@@ -98,6 +98,9 @@ Copy-Item bot\.env.example bot\.env   # rellena los valores
 .\tasks.ps1 web                       # web en http://localhost:3000 (ver web/README.md)
 .\tasks.ps1 web-check                 # lint, formato, tipos y build de la web
 .\tasks.ps1 e2e                       # Playwright contra Supabase local
+.\tasks.ps1 mobile-setup              # instala dependencias de la app móvil
+.\tasks.ps1 mobile                    # Expo: abre la app con Expo Go (ver mobile/README.md)
+.\tasks.ps1 mobile-check              # lint, formato, tipos y pruebas de la app
 ```
 
 Para medir la extracción con el LLM real, `.\tasks.ps1 eval` corre las frases del set de evaluación y guarda el resultado en [`bot/eval/results/`](bot/eval/results/). Consume cuota de Gemini, por eso no corre en el CI.
@@ -117,6 +120,7 @@ Supabase local usa los puertos 553xx (base de datos en `127.0.0.1:55322`) para c
 | `bot/` | Bot en Python 3.12 (aiogram, FastAPI, psycopg, Gemini) |
 | `supabase/` | Migraciones, seed y pruebas pgTAP; fuente de verdad del esquema |
 | `web/` | Panel en Next.js 16 con Supabase Auth y Recharts ([`web/README.md`](web/README.md)) |
+| `mobile/` | App Android en Expo (MVP de la Fase 13): saldos, movimientos, cambios y deudas ([`mobile/README.md`](mobile/README.md)) |
 | `docs/` | Guía de arquitectura, despliegue, demo y decisiones (ADR) |
 
 ## Licencia

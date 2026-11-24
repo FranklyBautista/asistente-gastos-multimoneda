@@ -5,6 +5,7 @@ import { EditTransactionForm } from "@/components/edit-transaction";
 import { ChevronLeftIcon } from "@/components/icons";
 import { Empty, LinkBanner, Loading } from "@/components/panel";
 import { getAccounts, getCategories, getSession, getTransaction } from "@/lib/data";
+import { DEBT_LINKED_MESSAGE } from "@/lib/edit-errors";
 import { formatDateTime } from "@/lib/format";
 
 export const metadata = { title: "Editar movimiento · Asistente de gastos" };
@@ -38,6 +39,7 @@ async function Editor({ searchParams }: Pick<PageProps<"/movimientos/editar">, "
   const id = Array.isArray(raw) ? raw[0] : raw;
   const transaction = id && UUID.test(id) ? await getTransaction(id) : null;
   if (!transaction) return <Empty>Ese movimiento no existe o ya se deshizo.</Empty>;
+  if (transaction.debtLinked) return <Empty>{DEBT_LINKED_MESSAGE}</Empty>;
   const [accounts, categories] = await Promise.all([getAccounts(), getCategories()]);
 
   return (

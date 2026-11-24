@@ -16,12 +16,12 @@ const LINKS = [
 /** Usuario del bot (sin @) para el botón de anotar; sin él, el botón no aparece. */
 const BOT = process.env.NEXT_PUBLIC_TELEGRAM_BOT?.replace(/^@/, "");
 
-/** Barra flotante de abajo: las cinco secciones y el atajo para anotar en Telegram. */
+/** Barra flotante de abajo: las cinco secciones, con su nombre, y el atajo para anotar en Telegram. */
 export function PanelNav() {
   const path = usePathname();
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-      <div className="pointer-events-auto flex w-full max-w-md items-center gap-2.5">
+      <div className="pointer-events-auto flex w-full max-w-md items-center gap-2.5 sm:max-w-2xl">
         <nav
           aria-label="Secciones"
           className="flex h-16 flex-1 items-center justify-between rounded-full border border-line bg-[#08100a]/85 px-2 shadow-[0_10px_30px_rgba(0,0,0,.5)] backdrop-blur-lg"
@@ -41,7 +41,8 @@ export function PanelNav() {
                 }
               >
                 <Icon />
-                <span className={active ? "max-sm:sr-only" : "sr-only"}>{label}</span>
+                {/* En escritorio se ven todos los nombres; en móvil solo cabe el de la activa. */}
+                <span className={active ? "" : "max-sm:sr-only"}>{label}</span>
               </Link>
             );
           })}

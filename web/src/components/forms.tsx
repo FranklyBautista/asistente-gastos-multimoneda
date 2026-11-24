@@ -10,14 +10,15 @@ import { KeyIcon, LockIcon, MailIcon } from "@/components/icons";
 /** Campo en píldora: ícono, etiqueta solo para lectores y el input. */
 const pill =
   "flex h-[52px] items-center gap-2.5 rounded-full border border-line bg-field pr-1.5 pl-4 " +
-  "text-muted focus-within:border-lime";
+  "text-muted focus-within:border-lime has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 " +
+  "has-[input:focus-visible]:outline-lime";
 const input =
   "h-full min-w-0 flex-1 bg-transparent text-[15px] font-medium text-foreground outline-none " +
   "placeholder:text-faint focus-visible:outline-none";
 const button =
   "btn-lime mt-2 h-[52px] w-full rounded-full text-[15px] font-bold disabled:opacity-60";
 const card =
-  "flex flex-col gap-3 rounded-[26px] border border-line p-[18px] " +
+  "flex flex-col gap-3 rounded-3xl border border-line p-[18px] " +
   "bg-[linear-gradient(180deg,rgba(30,56,35,.7),rgba(12,24,14,.85))] " +
   "shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_24px_60px_-20px_rgba(0,0,0,.7)]";
 
