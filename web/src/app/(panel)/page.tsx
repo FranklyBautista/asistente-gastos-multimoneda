@@ -4,13 +4,16 @@ import { Suspense } from "react";
 import { BalanceOrbit, groupByCurrency } from "@/components/balance-orbit";
 import { AccountCard, CURRENCY_ACCENT, CurrencyIcon } from "@/components/currency";
 import { AlertIcon, ArrowInIcon, ArrowOutIcon, ArrowRightIcon, SendIcon } from "@/components/icons";
+import { BudgetsCard, RunwayCard } from "@/components/habits";
 import { Card, Empty, LinkBanner, Loading } from "@/components/panel";
 import { TransactionItem } from "@/components/transactions";
 import {
   type Balance,
   getBalances,
+  getBudgets,
   getPeriodTotals,
   getSession,
+  getSpendingPace,
   listTransactions,
 } from "@/lib/data";
 import {
@@ -23,6 +26,7 @@ import {
   localToday,
   RATE_SOURCE_LABELS,
 } from "@/lib/format";
+import { daysLeftInMonth, runway } from "@/lib/habits";
 
 export const metadata = { title: "Inicio · Asistente de gastos" };
 
@@ -68,10 +72,12 @@ async function Overview() {
     );
   }
   const today = localToday(user.timezone);
-  const [balances, month, recent] = await Promise.all([
+  const [balances, month, recent, budgets, pace] = await Promise.all([
     getBalances(),
     getPeriodTotals(`${today.slice(0, 8)}01`, today),
     listTransactions({}, 1),
+    getBudgets(),
+    getSpendingPace(),
   ]);
   const priced = balances.filter((b) => b.balanceUsd !== null);
   const totalUsd = priced.reduce((sum, b) => sum + (b.balanceUsd ?? 0), 0);
@@ -130,6 +136,11 @@ async function Overview() {
           />
         </div>
       </section>
+
+      <div className="grid gap-5 sm:grid-cols-2">
+        <RunwayCard result={runway(totalUsd, pace.expensesUsd, pace.windowDays)} />
+        <BudgetsCard rows={budgets} daysLeft={daysLeftInMonth(today)} />
+      </div>
 
       <section aria-labelledby="cuentas" className="flex flex-col gap-3">
         <h2 id="cuentas" className="text-[17px] font-bold">

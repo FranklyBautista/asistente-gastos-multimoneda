@@ -9,6 +9,7 @@ const COPIES: [mobile: string, web: string][] = [
   ["src/lib/format.ts", "../web/src/lib/format.ts"],
   ["src/lib/link-errors.ts", "../web/src/lib/link-errors.ts"],
   ["src/lib/edit-errors.ts", "../web/src/lib/edit-errors.ts"],
+  ["src/lib/habits.ts", "../web/src/lib/habits.ts"],
   ["src/lib/database.types.ts", "../web/src/lib/supabase/database.types.ts"],
 ];
 
