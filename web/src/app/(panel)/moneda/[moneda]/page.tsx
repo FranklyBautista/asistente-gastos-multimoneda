@@ -4,9 +4,15 @@ import { Suspense } from "react";
 import { CurrencyDetail } from "@/components/currency-detail";
 import { LinkBanner, Loading } from "@/components/panel";
 import { getBalances, getSession, listTransactions } from "@/lib/data";
-import { isCurrency } from "@/lib/format";
+import { CURRENCIES, isCurrency } from "@/lib/format";
 
 export const metadata = { title: "Moneda · Asistente de gastos" };
+
+// Las monedas son un conjunto fijo: conocer las rutas en el build deja que el menú
+// (que lee usePathname) se prerenderice sin quedar fuera de <Suspense>.
+export function generateStaticParams() {
+  return CURRENCIES.map((moneda) => ({ moneda }));
+}
 
 /** Detalle de una moneda: su saldo (todas sus cuentas) y sus movimientos. */
 export default function CurrencyPage({ params }: PageProps<"/moneda/[moneda]">) {
