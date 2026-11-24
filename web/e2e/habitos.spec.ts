@@ -49,7 +49,10 @@ test.beforeAll(async () => {
     .is("user_id", null);
   const category = (n: string) => categories!.find((c) => c.name === n)!.id;
 
-  const usd = (kind: "income" | "expense", amount: number, name: string, occurredAt?: string) => ({
+  // Todas las filas llevan occurred_at: en una inserción masiva, PostgREST manda null (no el
+  // valor por defecto) a la columna que falte en alguna fila.
+  const now = new Date().toISOString();
+  const usd = (kind: "income" | "expense", amount: number, name: string, occurredAt = now) => ({
     user_id: user.id,
     account_id: account!.id,
     currency: "USD",
@@ -59,7 +62,7 @@ test.beforeAll(async () => {
     usd_per_unit: 1,
     rate_source: "pivot",
     amount_usd: amount,
-    ...(occurredAt ? { occurred_at: occurredAt } : {}),
+    occurred_at: occurredAt,
   });
   const { error: txError } = await admin
     .from("transactions")
