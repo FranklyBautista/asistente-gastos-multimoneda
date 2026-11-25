@@ -21,7 +21,7 @@ router = Router(name="onboarding")
 ASK_CURRENCY = (
     "¡Hola! Voy a registrar tus gastos en su moneda original.\n\n"
     "1/3 · Cuando escribas un monto sin moneda (por ejemplo «almuerzo 15»), "
-    "¿cuál uso por defecto?"
+    "te pregunto cuál es con botones. ¿Cuál pongo primero?"
 )
 ASK_VES_SOURCE = "2/3 · ¿Qué tasa usas para convertir tus bolívares a dólares?"
 ASK_TIMEZONE = "3/3 · ¿En qué zona horaria estás? La uso para «hoy» y «esta semana»."
