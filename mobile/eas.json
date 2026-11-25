@@ -10,10 +10,12 @@
       "android": { "buildType": "apk" }
     },
     "preview": {
+      "environment": "preview",
       "distribution": "internal",
       "android": { "buildType": "apk" }
     },
     "production": {
+      "environment": "production",
       "autoIncrement": true
     }
   }
