@@ -24,16 +24,17 @@ Las tasas salen de BCV, el paralelo y Binance P2P para el Bs (cada persona elige
 
 ## Métricas
 
-- **Extracción con Gemini real** (`.\tasks.ps1 eval`, prompt `extraccion-v6`, 93 casos de [`bot/eval/dataset.jsonl`](bot/eval/dataset.jsonl); 89 respondidos, 4 sin respuesta por el límite del plan gratuito):
-  - 88 de 89 casos exactos (98,9 %). El fallo es un cambio sin la moneda de destino explícita, que el bot pregunta.
-  - Intención acertada en 89 de 89.
-  - Moneda dudosa preguntada en 15 de 15 y moneda clara anotada en 37 de 37.
-  - Categoría en 40 de 40 y consultas en 36 de 36.
+- **Extracción con Gemini real** (`.\tasks.ps1 eval`, prompt `extraccion-v7`, 108 casos de [`bot/eval/dataset.jsonl`](bot/eval/dataset.jsonl); 103 respondidos, 5 sin respuesta por el límite del plan gratuito; [resultado](bot/eval/results/extraccion-v7.json)):
+  - 101 de 103 casos exactos (98,1 %). Los dos fallos son frases ambiguas: «pagué 200 con pago móvil» no anotó nada (la moneda no se dice) y «le mandé 100 por zelle a mi hermano» se tomó como deuda en vez de gasto.
+  - Intención acertada en 102 de 103.
+  - Topes por categoría («no quiero gastar más de 100 dólares al mes en comida») en 25 de 25.
+  - Moneda dudosa preguntada en 15 de 15 y moneda clara anotada en 35 de 35.
+  - Categoría en 40 de 40, consultas en 39 de 39 y cambios entre monedas en 19 de 19.
   - Deudas: dirección («debo» frente a «me debe») en 15 de 15, deudas y pagos con todos sus campos (57 de 57).
 - **Pruebas:**
   - Bot: unitarias e integración con pytest.
   - Base de datos: pgTAP sobre esquema, RLS, vinculación, panel y deudas.
-  - Web: E2E con Playwright para registro, vinculación con `/vincular`, saldos, filtros, edición, gráficas, cambios y deudas (la liquidada aparece tachada).
+  - Web: E2E con Playwright para registro, vinculación con `/vincular`, saldos, filtros, edición, gráficas, cambios, deudas (la liquidada aparece tachada) y el colchón y los topes en Inicio.
   - Todo corre en el CI de GitHub Actions.
 
 ## Arquitectura
