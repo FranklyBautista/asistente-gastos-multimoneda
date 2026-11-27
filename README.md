@@ -4,8 +4,9 @@ Para quien vive con varias monedas a la vez. Le escribes a un bot de Telegram co
 
 - **Bot:** [@frankly_gastos_bot](https://t.me/frankly_gastos_bot) (acceso por lista blanca).
 - **Web:** <https://asistente-gastos-multimoneda.vercel.app>.
+- **App Android:** [descarga el APK](https://github.com/FranklyBautista/asistente-gastos-multimoneda/releases/download/mobile-v1.0.0/asistente-gastos.apk) (Expo; misma cuenta que la web, vinculada con `/vincular`).
 
-> Estado: **Fase 12**, hábitos: topes por categoría, colchón en días y contexto al anotar (en producción; falta la parte web). **Fase 13**, app móvil: MVP en Expo en [`mobile/`](mobile/README.md) (saldos, movimientos, cambios y deudas).
+> Estado: **Fase 12**, hábitos: topes por categoría, colchón en días y contexto al anotar (en producción; falta la parte web). **Fase 13**, app móvil: APK Android en Expo en [`mobile/`](mobile/README.md) (saldos, movimientos, gráficas, cambios, deudas, colchón y topes, con bloqueo por huella).
 
 ## Qué hace
 
@@ -121,7 +122,7 @@ Supabase local usa los puertos 553xx (base de datos en `127.0.0.1:55322`) para c
 | `bot/` | Bot en Python 3.12 (aiogram, FastAPI, psycopg, Gemini) |
 | `supabase/` | Migraciones, seed y pruebas pgTAP; fuente de verdad del esquema |
 | `web/` | Panel en Next.js 16 con Supabase Auth y Recharts ([`web/README.md`](web/README.md)) |
-| `mobile/` | App Android en Expo (MVP de la Fase 13): saldos, movimientos, cambios y deudas ([`mobile/README.md`](mobile/README.md)) |
+| `mobile/` | App Android en Expo (Fase 13): saldos, movimientos, gráficas, cambios y deudas; APK con EAS ([`mobile/README.md`](mobile/README.md)) |
 | `docs/` | Guía de arquitectura, despliegue, demo y decisiones (ADR) |
 
 ## Licencia

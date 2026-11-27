@@ -2,11 +2,13 @@
 
 El panel web en el bolsillo: saldos y consolidado en USD, movimientos, cambios entre monedas y deudas. Es otro cliente de Supabase, igual que la web: lee las vistas y funciones con la llave publicable bajo la RLS de tu sesión, así que no tiene backend propio ni hace cálculos de dinero ([ADR 0018](../docs/decisions/0018-app-movil.md)).
 
-## Estado (MVP de la Fase 13)
+**Descarga:** [APK para Android](https://github.com/FranklyBautista/asistente-gastos-multimoneda/releases/download/mobile-v1.0.0/asistente-gastos.apk) (arm64; en el teléfono hay que permitir instalar apps de fuentes desconocidas). Entra con la misma cuenta que la web, vinculada con `/vincular` en el bot.
+
+## Estado (Fase 13)
 
 | Hecho                                                                                                  | Pendiente                                |
 | ------------------------------------------------------------------------------------------------------ | ---------------------------------------- |
-| Login, registro y vinculación con el código de `/vincular`                                             |                                          |
+| Login, registro (el correo de confirmación abre la app) y vinculación con el código de `/vincular`     |                                          |
 | Sesión en el llavero del teléfono (`expo-secure-store`, en trozos)                                     |                                          |
 | Inicio: consolidado en USD, mes en curso y saldos por cuenta                                           |                                          |
 | Movimientos paginados con filtros de moneda, tipo, categoría y fecha · edición (no los pagos de deuda) |                                          |
@@ -14,7 +16,7 @@ El panel web en el bolsillo: saldos y consolidado en USD, movimientos, cambios e
 | Gráficas: categoría, semanas y bolívar (Victory Native 42 + Skia)                                      |
 | Bloqueo con huella, rostro o PIN al abrir y tras 30 s en segundo plano (Ajustes)                       |
 | Colchón en días y topes del mes en Inicio (Fase 12)                                                    |                                          |
-| Pruebas con Jest y CI `mobile.yml`                                                                     | Maestro (E2E) y build del APK con EAS    |
+| Pruebas con Jest y CI `mobile.yml` · APK con EAS                                                       | Maestro (E2E)                            |
 
 ## Desarrollo
 
@@ -41,12 +43,14 @@ copy web\src\lib\supabase\database.types.ts mobile\src\lib\database.types.ts
 
 ## APK con EAS
 
-`eas.json` tiene los perfiles `development` (dev client), `preview` (APK interno con enlace) y `production`. Requiere una cuenta de Expo:
+`eas.json` tiene los perfiles `development` (dev client), `preview` (APK interno) y `production`. El proyecto es `@franklyb/asistente-gastos` y las variables `EXPO_PUBLIC_*` viven en los entornos `preview` y `production` de EAS (`eas env:list --environment preview`), porque se fijan al compilar.
 
 ```powershell
 cd mobile
-npx eas-cli@latest login
 npx eas-cli@latest build --profile preview --platform android
 ```
 
-Las variables `EXPO_PUBLIC_*` se fijan al compilar: cárgalas en EAS (`eas env:create`) antes del build.
+- El perfil `preview` compila solo para `arm64-v8a`: con las 4 arquitecturas, el daemon de Gradle se quedaba sin memoria en el worker gratuito al compilar Reanimated, Skia y Worklets. Cubre prácticamente todos los teléfonos actuales; el emulador x86_64 de Android Studio sigue usándose con Expo Go.
+- EAS sube los archivos tal como están en disco, no el último commit. Para publicar un APK, compílalo desde un worktree limpio (`git worktree add --detach <carpeta> <commit>`).
+- Publica el APK como asset `asistente-gastos.apk` de un release de GitHub (`mobile-vX.Y.Z`), que es lo que enlaza este README: los builds de Expo del plan gratuito caducan.
+- El correo de confirmación vuelve a `asistentegastos://auth/callback`, que tiene que estar en Redirect URLs de Auth en Supabase (en local ya está en `supabase/config.toml`).

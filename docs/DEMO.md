@@ -23,6 +23,19 @@ El objetivo es que quien lo vea entienda en menos de 3 minutos qué problema res
 | 2:30–2:45 | Web, Cambios | El historial con la diferencia en %. | «Y aquí reviso si cambié bien a lo largo del tiempo.» |
 | 2:45–3:00 | README del repo | Diagrama de arquitectura y métricas. | «Bot en Python con capas verificadas en el CI, Postgres con RLS por dueño y una web en Next.js. La extracción acierta el 95,8 % del set de evaluación.» |
 
+## Toma extra: la app móvil (30 segundos)
+
+Si el video da para más, o como clip aparte, graba la pantalla del teléfono con el APK instalado (`adb shell screenrecord` o la grabación de Android):
+
+| Pantalla | Qué haces | Qué dices |
+|---|---|---|
+| Bloqueo | Abre la app y desbloquéala con la huella. | «También está en el teléfono, protegida con huella.» |
+| Inicio | Consolidado en USD, colchón y topes; toca una moneda para ver su detalle. | «Los mismos datos que la web, leídos de la misma base con las mismas reglas: no hay un backend aparte.» |
+| Movimientos | Filtra por 7 días y edita un movimiento. | «Puedo filtrar y corregir desde aquí.» |
+| Gráficas | Gasto por categoría y el bolívar frente al dólar. | «Y ver las mismas gráficas.» |
+
+Antes de grabar, desactiva las notificaciones y ten la cuenta ya vinculada. Enlace de descarga: el APK del release `mobile-v1.0.0` (ver [`mobile/README.md`](../mobile/README.md)).
+
 ## Después
 
 - Súbelo a YouTube (no listado) o a Loom.
