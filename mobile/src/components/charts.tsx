@@ -53,6 +53,51 @@ export function CategoryBars({ data }: { data: { category: string; totalUsd: num
   );
 }
 
+/**
+ * Lo que entró frente a lo que se gastó: dos barras sobre la misma escala. Cada barra lleva
+ * su nombre y su monto al lado, así el color (verde/rojo como en Inicio) no es lo único que
+ * las distingue.
+ */
+export function IncomeVsExpenses({
+  incomeUsd,
+  expensesUsd,
+}: {
+  incomeUsd: number;
+  expensesUsd: number;
+}) {
+  const max = Math.max(incomeUsd, expensesUsd, 0);
+  const rows = [
+    { label: "Ingresos", usd: incomeUsd, color: colors.lime },
+    { label: "Gastos", usd: expensesUsd, color: colors.danger },
+  ];
+  return (
+    <View style={{ gap: 14 }} {...hidden}>
+      {rows.map((r) => (
+        <View key={r.label} style={{ gap: 6 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
+            <Text style={styles.muted}>{r.label}</Text>
+            <Text style={{ color: colors.foreground, fontSize: 20, fontWeight: "800" }}>
+              {formatUsd(r.usd)}
+            </Text>
+          </View>
+          <View style={local.track}>
+            <View
+              style={[
+                local.fill,
+                {
+                  backgroundColor: r.color,
+                  // Un mínimo visible para que un monto chico no desaparezca.
+                  width: `${max > 0 ? Math.max((r.usd / max) * 100, r.usd > 0 ? 2 : 0) : 0}%`,
+                },
+              ]}
+            />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export function WeeklyChart({ data }: { data: { weekStart: string; expensesUsd: number }[] }) {
   const points = data.map((w, i) => ({ i, usd: w.expensesUsd }));
   return (

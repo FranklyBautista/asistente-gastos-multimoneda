@@ -1,5 +1,5 @@
 import type { TxQuery } from "./filters";
-import { type Currency, isCurrency, isKind, type Kind } from "./format";
+import { type Currency, isCurrency, isKind, type Kind, localToday } from "./format";
 import { supabase } from "./supabase";
 
 /**
@@ -101,6 +101,29 @@ export async function getPeriodTotals(
     incomeUsd,
     expensesUsd: spending.reduce((sum, c) => sum + Number(c.total_usd), 0),
   };
+}
+
+export type AllTimeTotals = { firstDay: string; incomeUsd: number; expensesUsd: number };
+
+/**
+ * Todo lo que entró y todo lo que se gastó en USD desde el primer movimiento (sin los
+ * borrados), en la zona del usuario. null si todavía no hay movimientos.
+ */
+export async function getAllTimeTotals(timeZone: string): Promise<AllTimeTotals | null> {
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("occurred_at")
+    .is("deleted_at", null)
+    .order("occurred_at")
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`No se pudo leer el primer movimiento: ${error.message}`);
+  if (!data) return null;
+  const firstDay = new Intl.DateTimeFormat("en-CA", { timeZone }).format(
+    new Date(data.occurred_at),
+  );
+  const totals = await getPeriodTotals(firstDay, localToday(timeZone));
+  return { firstDay, ...totals };
 }
 
 // ---- Hábitos (Fase 12) ----
