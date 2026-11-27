@@ -161,9 +161,7 @@ export async function getPeriodTotals(
   to: string,
 ): Promise<{ incomeUsd: number; expensesUsd: number }> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .rpc("period_totals", { p_from: from, p_to: to })
-    .single();
+  const { data, error } = await supabase.rpc("period_totals", { p_from: from, p_to: to }).single();
   if (error) throw new Error(`No se pudieron leer los totales: ${error.message}`);
   return { incomeUsd: Number(data.income_usd), expensesUsd: Number(data.expenses_usd) };
 }
