@@ -439,6 +439,9 @@ isOneToOne: false
 { Args: { "p_days"?: number }; Returns: {
               "expenses_usd": number,"window_days": number
             }[]
+                           },
+"update_preferences":
+{ Args: { "p_context_replies"?: boolean,"p_default_currency"?: string,"p_timezone"?: string,"p_ves_rate_source"?: string }; Returns: undefined
                            }
           }
           Enums: {

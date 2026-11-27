@@ -14,7 +14,7 @@ El panel web en el bolsillo: saldos y consolidado en USD, movimientos, cambios e
 | Movimientos paginados con filtros de moneda, tipo, categoría y fecha · edición (no los pagos de deuda) |                                          |
 | Historial de cambios y deudas (liquidadas tachadas)                                                    | Fuente Plus Jakarta Sans y pulido visual |
 | Gráficas: categoría, semanas y bolívar (Victory Native 42 + Skia)                                      |
-| Bloqueo con huella, rostro o PIN al abrir y tras 30 s en segundo plano (Ajustes)                       |
+| Bloqueo con huella, rostro o PIN al abrir y tras 30 s en segundo plano (Perfil)                        |
 | Colchón en días y topes del mes en Inicio (Fase 12)                                                    |                                          |
 | Pruebas con Jest y CI `mobile.yml` · APK con EAS                                                       | Maestro (E2E)                            |
 

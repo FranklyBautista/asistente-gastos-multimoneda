@@ -47,22 +47,22 @@ export function Screen({
           ) : undefined
         }
       >
-        <Header title={title} subtitle={subtitle} settings />
+        <Header title={title} subtitle={subtitle} profile />
         {children}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-/** Título de la pantalla; con `settings`, el acceso a Ajustes a la derecha. */
+/** Título de la pantalla; con `profile`, el acceso al Perfil a la derecha. */
 export function Header({
   title,
   subtitle,
-  settings = false,
+  profile = false,
 }: {
   title: string;
   subtitle?: string;
-  settings?: boolean;
+  profile?: boolean;
 }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 12 }}>
@@ -72,15 +72,15 @@ export function Header({
           {title}
         </Text>
       </View>
-      {settings ? (
-        <Link href="/ajustes" asChild>
+      {profile ? (
+        <Link href="/perfil" asChild>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Ajustes"
+            accessibilityLabel="Perfil"
             hitSlop={8}
             style={styles.iconButton}
           >
-            <Ionicons name="settings-outline" size={22} color={colors.muted} />
+            <Ionicons name="person-outline" size={22} color={colors.muted} />
           </Pressable>
         </Link>
       ) : null}

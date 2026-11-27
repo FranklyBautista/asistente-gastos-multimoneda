@@ -1,5 +1,6 @@
 import type { TxQuery } from "./filters";
 import { type Currency, isCurrency, isKind, type Kind, localToday } from "./format";
+import type { PreferencesPatch } from "./preferences";
 import { supabase } from "./supabase";
 
 /**
@@ -20,13 +21,24 @@ function kind(value: unknown): Kind {
 
 // ---- Usuario del bot vinculado ----
 
-export type LinkedUser = { displayName: string | null; timezone: string; vesRateSource: string };
+export type LinkedUser = {
+  displayName: string | null;
+  timezone: string;
+  vesRateSource: string;
+  defaultCurrency: Currency;
+  /** Si el bot responde con contexto al anotar (/contexto). */
+  contextReplies: boolean;
+  /** Cuándo empezó a usar el bot (ISO). */
+  createdAt: string;
+};
 
 /** null si la cuenta web todavía no está vinculada con Telegram (/vincular). */
 export async function getLinkedUser(): Promise<LinkedUser | null> {
   const { data, error } = await supabase
     .from("users")
-    .select("display_name, timezone, ves_rate_source")
+    .select(
+      "display_name, timezone, ves_rate_source, default_currency, context_replies, created_at",
+    )
     .maybeSingle();
   if (error) throw new Error(`No se pudo leer el usuario: ${error.message}`);
   return data
@@ -34,8 +46,25 @@ export async function getLinkedUser(): Promise<LinkedUser | null> {
         displayName: data.display_name,
         timezone: data.timezone,
         vesRateSource: data.ves_rate_source,
+        defaultCurrency: currency(data.default_currency),
+        contextReplies: data.context_replies,
+        createdAt: data.created_at,
       }
     : null;
+}
+
+/**
+ * Cambia las preferencias con la RPC `update_preferences` (lo que no viene queda igual).
+ * Lanza el mensaje de la base (ver preferences.ts).
+ */
+export async function updatePreferences(patch: PreferencesPatch): Promise<void> {
+  const { error } = await supabase.rpc("update_preferences", {
+    p_default_currency: patch.defaultCurrency,
+    p_ves_rate_source: patch.vesRateSource,
+    p_timezone: patch.timezone,
+    p_context_replies: patch.contextReplies,
+  });
+  if (error) throw new Error(error.message);
 }
 
 // ---- Saldos ----
