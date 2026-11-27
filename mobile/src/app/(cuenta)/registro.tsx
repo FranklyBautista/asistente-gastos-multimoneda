@@ -1,8 +1,10 @@
+import * as Linking from "expo-linking";
 import { Link } from "expo-router";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, Text, View } from "react-native";
 
 import { Button, Field, Screen, styles } from "@/components/ui";
+import { AUTH_CALLBACK_PATH } from "@/lib/auth-callback";
 import { authErrorMessage } from "@/lib/auth-errors";
 import { supabase } from "@/lib/supabase";
 
@@ -18,16 +20,19 @@ export default function SignUpScreen() {
     if (password.length < 8) return setError("La contraseña debe tener al menos 8 caracteres.");
     setBusy(true);
     setError(null);
-    // Sin emailRedirectTo: el enlace de confirmación abre la web (site_url) y luego se entra
-    // aquí con el correo y la contraseña.
+    // En el APK es asistentegastos://auth/callback. En Expo Go es una URL exp:// que no está
+    // en la lista de Auth, así que Supabase manda a la web (site_url) y luego se entra aquí.
     const { data, error: authError } = await supabase.auth.signUp({
       email: email.trim(),
       password,
+      options: { emailRedirectTo: Linking.createURL(AUTH_CALLBACK_PATH) },
     });
     setBusy(false);
     if (authError) return setError(authErrorMessage(authError.code, "signUp"));
     if (!data.session) {
-      setNotice("Te enviamos un correo para confirmar la cuenta. Ábrelo y luego inicia sesión.");
+      setNotice(
+        "Te enviamos un correo para confirmar la cuenta. Ábrelo desde este teléfono y entrarás directo.",
+      );
     }
   }
 

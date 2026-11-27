@@ -1,4 +1,4 @@
-import { Link } from "expo-router";
+import { Link, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, Text, View } from "react-native";
 
@@ -7,6 +7,8 @@ import { authErrorMessage } from "@/lib/auth-errors";
 import { supabase } from "@/lib/supabase";
 
 export default function LoginScreen() {
+  // auth/callback manda aquí con ?error=confirmacion si el enlace del correo no sirvió.
+  const { error: callbackError } = useLocalSearchParams<{ error?: string }>();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +34,12 @@ export default function LoginScreen() {
     >
       <Screen title="Inicia sesión" subtitle="Asistente de gastos">
         <View style={{ gap: 14 }}>
+          {callbackError === "confirmacion" ? (
+            <Text style={styles.error} accessibilityRole="alert">
+              No se pudo confirmar el correo: el enlace venció o se abrió en otro dispositivo.
+              Inicia sesión; si te lo pide, vuelve a registrarte para recibir un correo nuevo.
+            </Text>
+          ) : null}
           <Field
             label="Correo"
             value={email}

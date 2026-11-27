@@ -27,6 +27,8 @@ export const supabase = createClient<Database>(url, publishableKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+    // El enlace del correo vuelve con ?code= y no con los tokens en la URL (auth/callback.tsx).
+    flowType: "pkce",
   },
 });
 
