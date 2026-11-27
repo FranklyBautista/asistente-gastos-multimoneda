@@ -18,11 +18,23 @@ export const metadata = { title: "Movimientos · Asistente de gastos" };
 type Search = Record<string, string | string[] | undefined>;
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
+/** Más allá, el desplazamiento de la página no cabe en el `integer` de list_transactions. */
+const MAX_PAGE = 1_000_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function one(value: string | string[] | undefined): string | undefined {
   const v = Array.isArray(value) ? value[0] : value;
   return v?.trim() || undefined;
+}
+
+/** `YYYY-MM-DD` de un día que existe: `2026-02-31` tiene la forma, pero Postgres lo rechaza. */
+function isDay(value: string | undefined): value is string {
+  if (!value || !DAY.test(value)) return false;
+  const [y, m, d] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return (
+    y >= 1 && date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d
+  );
 }
 
 /** Los filtros vienen de la URL: lo que no es válido se ignora. */
@@ -38,10 +50,10 @@ function parseFilters(search: Search): { filters: TransactionFilters; page: numb
       currency: isCurrency(currency) ? currency : undefined,
       kind: isKind(kind) ? kind : undefined,
       categoryId: categoryId && UUID.test(categoryId) ? categoryId : undefined,
-      from: from && DAY.test(from) ? from : undefined,
-      to: to && DAY.test(to) ? to : undefined,
+      from: isDay(from) ? from : undefined,
+      to: isDay(to) ? to : undefined,
     },
-    page: Number.isFinite(page) && page > 0 ? page : 1,
+    page: Number.isFinite(page) && page > 0 ? Math.min(page, MAX_PAGE) : 1,
   };
 }
 
