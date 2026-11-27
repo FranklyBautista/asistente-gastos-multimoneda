@@ -10,10 +10,13 @@
       "android": { "buildType": "apk" }
     },
     "preview": {
+      "environment": "preview",
       "distribution": "internal",
+      "env": { "ORG_GRADLE_PROJECT_reactNativeArchitectures": "arm64-v8a" },
       "android": { "buildType": "apk" }
     },
     "production": {
+      "environment": "production",
       "autoIncrement": true
     }
   }

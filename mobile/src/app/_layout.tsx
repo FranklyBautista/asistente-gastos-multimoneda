@@ -46,7 +46,7 @@ export default function RootLayout() {
                 name="editar/[id]"
                 options={{ headerShown: true, title: "Editar movimiento" }}
               />
-              <Stack.Screen name="ajustes" options={{ headerShown: true, title: "Ajustes" }} />
+              <Stack.Screen name="perfil" options={{ headerShown: true, title: "Perfil" }} />
             </Stack>
             <LockScreen />
           </ThemeProvider>

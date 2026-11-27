@@ -422,6 +422,11 @@ isOneToOne: false
 "local_day_start":
 { Args: { "p_day": string }; Returns: string
                            },
+"period_totals":
+{ Args: { "p_from": string,"p_to": string }; Returns: {
+              "expenses_usd": number,"income_usd": number
+            }[]
+                           },
 "redeem_link_code":
 { Args: { "p_code": string }; Returns: string
                            },
@@ -439,6 +444,9 @@ isOneToOne: false
 { Args: { "p_days"?: number }; Returns: {
               "expenses_usd": number,"window_days": number
             }[]
+                           },
+"update_preferences":
+{ Args: { "p_context_replies"?: boolean,"p_default_currency"?: string,"p_timezone"?: string,"p_ves_rate_source"?: string }; Returns: undefined
                            }
           }
           Enums: {

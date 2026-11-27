@@ -2,6 +2,7 @@
   "expo": {
     "name": "Asistente de gastos",
     "slug": "asistente-gastos",
+    "owner": "franklyb",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -42,6 +43,11 @@
     "experiments": {
       "reactCompiler": true
     },
-    "backgroundColor": "#050a06"
+    "backgroundColor": "#050a06",
+    "extra": {
+      "eas": {
+        "projectId": "189b1f0e-cb5b-46b2-b154-b161e2de87e8"
+      }
+    }
   }
 }

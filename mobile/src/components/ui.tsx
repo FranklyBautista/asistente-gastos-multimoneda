@@ -17,19 +17,24 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { colors, radius } from "@/theme";
 
-/** Pantalla con scroll, márgenes y «tirar para actualizar». */
+/**
+ * Pantalla con scroll, márgenes y «tirar para actualizar». `profile={false}` quita el acceso al
+ * Perfil (login y registro: sin sesión no hay perfil que mostrar).
+ */
 export function Screen({
   title,
   subtitle,
   children,
   refreshing = false,
   onRefresh,
+  profile = true,
 }: {
   title: string;
   subtitle?: string;
   children: ReactNode;
   refreshing?: boolean;
   onRefresh?: () => void;
+  profile?: boolean;
 }) {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -47,22 +52,22 @@ export function Screen({
           ) : undefined
         }
       >
-        <Header title={title} subtitle={subtitle} settings />
+        <Header title={title} subtitle={subtitle} profile={profile} />
         {children}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-/** Título de la pantalla; con `settings`, el acceso a Ajustes a la derecha. */
+/** Título de la pantalla; con `profile`, el acceso al Perfil a la derecha. */
 export function Header({
   title,
   subtitle,
-  settings = false,
+  profile = false,
 }: {
   title: string;
   subtitle?: string;
-  settings?: boolean;
+  profile?: boolean;
 }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 12 }}>
@@ -72,15 +77,15 @@ export function Header({
           {title}
         </Text>
       </View>
-      {settings ? (
-        <Link href="/ajustes" asChild>
+      {profile ? (
+        <Link href="/perfil" asChild>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Ajustes"
+            accessibilityLabel="Perfil"
             hitSlop={8}
             style={styles.iconButton}
           >
-            <Ionicons name="settings-outline" size={22} color={colors.muted} />
+            <Ionicons name="person-outline" size={22} color={colors.muted} />
           </Pressable>
         </Link>
       ) : null}

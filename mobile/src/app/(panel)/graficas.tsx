@@ -2,7 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Text, View } from "react-native";
 
-import { BolivarChart, CategoryBars, DataTable, WeeklyChart } from "@/components/charts";
+import {
+  BolivarChart,
+  CategoryBars,
+  DataTable,
+  IncomeVsExpenses,
+  WeeklyChart,
+} from "@/components/charts";
 import {
   Card,
   Chip,
@@ -32,6 +38,8 @@ import {
 } from "@/lib/format";
 import { useLinkedUser } from "@/lib/hooks";
 import {
+  type AllTimeTotals,
+  getAllTimeTotals,
   getBalances,
   getBolivarRates,
   getSpendingByCategory,
@@ -63,8 +71,13 @@ export default function ChartsScreen() {
     enabled: linked,
   });
   const balances = useQuery({ queryKey: ["balances"], queryFn: getBalances, enabled: linked });
+  const allTime = useQuery({
+    queryKey: ["all-time-totals", timeZone],
+    queryFn: () => getAllTimeTotals(timeZone),
+    enabled: linked,
+  });
 
-  const queries = [categories, weeks, bolivar, balances];
+  const queries = [allTime, categories, weeks, bolivar, balances];
   const refreshing = user.isRefetching || queries.some((q) => q.isRefetching);
   function refresh() {
     void user.refetch();
@@ -78,6 +91,21 @@ export default function ChartsScreen() {
   else {
     body = (
       <>
+        <Card style={{ gap: 14 }}>
+          <Text style={styles.subtitle} accessibilityRole="header">
+            Ingresos y gastos desde el inicio
+          </Text>
+          {allTime.isPending ? (
+            <Loading />
+          ) : allTime.isError ? (
+            <ErrorState onRetry={() => void allTime.refetch()} />
+          ) : !allTime.data ? (
+            <Empty>Todavía no tienes movimientos.</Empty>
+          ) : (
+            <AllTime totals={allTime.data} />
+          )}
+        </Card>
+
         <Card style={{ gap: 14 }}>
           <Text style={styles.subtitle} accessibilityRole="header">
             Gasto por categoría
@@ -158,6 +186,31 @@ export default function ChartsScreen() {
     <Screen title="Gráficas" refreshing={refreshing} onRefresh={refresh}>
       {body}
     </Screen>
+  );
+}
+
+function AllTime({ totals }: { totals: AllTimeTotals }) {
+  const { firstDay, incomeUsd, expensesUsd } = totals;
+  const verdict =
+    incomeUsd > 0
+      ? `Has gastado el ${Math.round((expensesUsd / incomeUsd) * 100)} % de lo que te entró.`
+      : "Todavía no has anotado ingresos.";
+  return (
+    <>
+      <Text style={styles.muted}>
+        Desde tu primer movimiento, el {formatDay(firstDay, "medium")}, en USD al momento de cada
+        uno.
+      </Text>
+      <IncomeVsExpenses incomeUsd={incomeUsd} expensesUsd={expensesUsd} />
+      <Text style={styles.body}>{verdict}</Text>
+      <DataTable
+        headers={["Total", "USD"]}
+        rows={[
+          ["Ingresos", formatUsd(incomeUsd)],
+          ["Gastos", formatUsd(expensesUsd)],
+        ]}
+      />
+    </>
   );
 }
 

@@ -1,5 +1,6 @@
 import type { TxQuery } from "./filters";
-import { type Currency, isCurrency, isKind, type Kind } from "./format";
+import { type Currency, isCurrency, isKind, type Kind, localToday } from "./format";
+import type { PreferencesPatch } from "./preferences";
 import { supabase } from "./supabase";
 
 /**
@@ -20,13 +21,24 @@ function kind(value: unknown): Kind {
 
 // ---- Usuario del bot vinculado ----
 
-export type LinkedUser = { displayName: string | null; timezone: string; vesRateSource: string };
+export type LinkedUser = {
+  displayName: string | null;
+  timezone: string;
+  vesRateSource: string;
+  defaultCurrency: Currency;
+  /** Si el bot responde con contexto al anotar (/contexto). */
+  contextReplies: boolean;
+  /** Cuándo empezó a usar el bot (ISO). */
+  createdAt: string;
+};
 
 /** null si la cuenta web todavía no está vinculada con Telegram (/vincular). */
 export async function getLinkedUser(): Promise<LinkedUser | null> {
   const { data, error } = await supabase
     .from("users")
-    .select("display_name, timezone, ves_rate_source")
+    .select(
+      "display_name, timezone, ves_rate_source, default_currency, context_replies, created_at",
+    )
     .maybeSingle();
   if (error) throw new Error(`No se pudo leer el usuario: ${error.message}`);
   return data
@@ -34,8 +46,25 @@ export async function getLinkedUser(): Promise<LinkedUser | null> {
         displayName: data.display_name,
         timezone: data.timezone,
         vesRateSource: data.ves_rate_source,
+        defaultCurrency: currency(data.default_currency),
+        contextReplies: data.context_replies,
+        createdAt: data.created_at,
       }
     : null;
+}
+
+/**
+ * Cambia las preferencias con la RPC `update_preferences` (lo que no viene queda igual).
+ * Lanza el mensaje de la base (ver preferences.ts).
+ */
+export async function updatePreferences(patch: PreferencesPatch): Promise<void> {
+  const { error } = await supabase.rpc("update_preferences", {
+    p_default_currency: patch.defaultCurrency,
+    p_ves_rate_source: patch.vesRateSource,
+    p_timezone: patch.timezone,
+    p_context_replies: patch.contextReplies,
+  });
+  if (error) throw new Error(error.message);
 }
 
 // ---- Saldos ----
@@ -79,28 +108,33 @@ export async function getPeriodTotals(
   from: string,
   to: string,
 ): Promise<{ incomeUsd: number; expensesUsd: number }> {
-  const { data: spending, error } = await supabase.rpc("spending_by_category", {
-    p_from: from,
-    p_to: to,
-  });
-  if (error) throw new Error(`No se pudo leer el gasto del mes: ${error.message}`);
-  let incomeUsd = 0;
-  for (let offset = 0; offset < 2_000; offset += 100) {
-    const { data, error: incomeError } = await supabase.rpc("list_transactions", {
-      p_kind: "income",
-      p_from: from,
-      p_to: to,
-      p_limit: 100,
-      p_offset: offset,
-    });
-    if (incomeError) throw new Error(`No se pudieron leer los ingresos: ${incomeError.message}`);
-    incomeUsd += data.reduce((sum, r) => sum + Number(r.amount_usd), 0);
-    if (data.length < 100 || offset + data.length >= Number(data[0].total)) break;
-  }
-  return {
-    incomeUsd,
-    expensesUsd: spending.reduce((sum, c) => sum + Number(c.total_usd), 0),
-  };
+  // Sumado en la base con period_totals (migración 20261127120000): sin tope de movimientos.
+  const { data, error } = await supabase.rpc("period_totals", { p_from: from, p_to: to }).single();
+  if (error) throw new Error(`No se pudieron leer los totales: ${error.message}`);
+  return { incomeUsd: Number(data.income_usd), expensesUsd: Number(data.expenses_usd) };
+}
+
+export type AllTimeTotals = { firstDay: string; incomeUsd: number; expensesUsd: number };
+
+/**
+ * Todo lo que entró y todo lo que se gastó en USD desde el primer movimiento (sin los
+ * borrados), en la zona del usuario. null si todavía no hay movimientos.
+ */
+export async function getAllTimeTotals(timeZone: string): Promise<AllTimeTotals | null> {
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("occurred_at")
+    .is("deleted_at", null)
+    .order("occurred_at")
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`No se pudo leer el primer movimiento: ${error.message}`);
+  if (!data) return null;
+  const firstDay = new Intl.DateTimeFormat("en-CA", { timeZone }).format(
+    new Date(data.occurred_at),
+  );
+  const totals = await getPeriodTotals(firstDay, localToday(timeZone));
+  return { firstDay, ...totals };
 }
 
 // ---- Hábitos (Fase 12) ----

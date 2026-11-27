@@ -153,30 +153,17 @@ export async function listTransactions(
 }
 
 /**
- * Ingresos y gastos en USD entre dos días locales (incluidos). Los gastos salen sumados de
- * spending_by_category; los ingresos, de list_transactions por páginas de 100 (su tope),
- * porque no hay una función que los sume. Suelen ser pocos al mes.
+ * Ingresos y gastos en USD entre dos días locales (incluidos), sumados en la base con
+ * period_totals (migración 20261127120000), sin tope de movimientos.
  */
 export async function getPeriodTotals(
   from: string,
   to: string,
 ): Promise<{ incomeUsd: number; expensesUsd: number }> {
   const supabase = await createClient();
-  const expenses = await getSpendingByCategory(from, to);
-  let incomeUsd = 0;
-  for (let offset = 0; offset < 2_000; offset += 100) {
-    const { data, error } = await supabase.rpc("list_transactions", {
-      p_kind: "income",
-      p_from: from,
-      p_to: to,
-      p_limit: 100,
-      p_offset: offset,
-    });
-    if (error) throw new Error(`No se pudieron leer los ingresos: ${error.message}`);
-    incomeUsd += data.reduce((sum, r) => sum + Number(r.amount_usd), 0);
-    if (data.length < 100 || offset + data.length >= Number(data[0].total)) break;
-  }
-  return { incomeUsd, expensesUsd: expenses.reduce((sum, c) => sum + c.totalUsd, 0) };
+  const { data, error } = await supabase.rpc("period_totals", { p_from: from, p_to: to }).single();
+  if (error) throw new Error(`No se pudieron leer los totales: ${error.message}`);
+  return { incomeUsd: Number(data.income_usd), expensesUsd: Number(data.expenses_usd) };
 }
 
 export type EditableTransaction = {

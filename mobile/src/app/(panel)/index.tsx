@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { BalanceOrbit, groupByCurrency } from "@/components/balance-orbit";
 import { AccountCard } from "@/components/currency";
 import { BudgetsCard, RunwayCard } from "@/components/habits";
-import { Button, ErrorState, LinkBanner, Loading, Screen, styles } from "@/components/ui";
+import { ErrorState, LinkBanner, Loading, Screen, styles } from "@/components/ui";
 import { formatMonth, formatUsd, localToday, RATE_SOURCE_LABELS } from "@/lib/format";
 import { daysLeftInMonth, runway } from "@/lib/habits";
 import { useLinkedUser } from "@/lib/hooks";
@@ -16,7 +16,6 @@ import {
   getPeriodTotals,
   getSpendingPace,
 } from "@/lib/queries";
-import { supabase } from "@/lib/supabase";
 import { colors, radius } from "@/theme";
 
 /** Saldos por cuenta, consolidado en USD y el mes en curso, como el Inicio de la web. */
@@ -67,7 +66,6 @@ export default function HomeScreen() {
       onRefresh={refresh}
     >
       {body}
-      <Button label="Cerrar sesión" variant="ghost" onPress={() => void supabase.auth.signOut()} />
     </Screen>
   );
 }
@@ -91,7 +89,7 @@ function Overview({
   const totalUsd = balances.reduce((sum, b) => sum + (b.balanceUsd ?? 0), 0);
   const unpriced = balances.filter((b) => b.balanceUsd === null && b.balance !== 0);
   const stale = [...new Set(balances.filter((b) => b.rateStale).map((b) => b.rateSource ?? ""))];
-  const groups = groupByCurrency(balances, totalUsd);
+  const groups = groupByCurrency(balances);
 
   return (
     <>
