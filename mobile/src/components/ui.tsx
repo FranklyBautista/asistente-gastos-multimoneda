@@ -17,19 +17,24 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { colors, radius } from "@/theme";
 
-/** Pantalla con scroll, márgenes y «tirar para actualizar». */
+/**
+ * Pantalla con scroll, márgenes y «tirar para actualizar». `profile={false}` quita el acceso al
+ * Perfil (login y registro: sin sesión no hay perfil que mostrar).
+ */
 export function Screen({
   title,
   subtitle,
   children,
   refreshing = false,
   onRefresh,
+  profile = true,
 }: {
   title: string;
   subtitle?: string;
   children: ReactNode;
   refreshing?: boolean;
   onRefresh?: () => void;
+  profile?: boolean;
 }) {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -47,7 +52,7 @@ export function Screen({
           ) : undefined
         }
       >
-        <Header title={title} subtitle={subtitle} profile />
+        <Header title={title} subtitle={subtitle} profile={profile} />
         {children}
       </ScrollView>
     </SafeAreaView>

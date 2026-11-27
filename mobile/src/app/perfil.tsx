@@ -1,5 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Redirect } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 
@@ -25,9 +26,13 @@ import { colors, radius } from "@/theme";
  * update_preferences: la app no escribe la tabla `users` directamente (ADR 0012).
  */
 export default function ProfileScreen() {
-  const { session } = useAuth();
+  const { session, loading } = useAuth();
   const user = useLinkedUser();
   const email = session?.user.email ?? null;
+
+  // Sin sesión (al cerrarla aquí mismo, o si se llega sin ella) vuelve al login, como el panel.
+  if (loading) return <Loading />;
+  if (!session) return <Redirect href="/login" />;
 
   return (
     <ScrollView
@@ -52,8 +57,8 @@ export default function ProfileScreen() {
               Cuenta vinculada
             </Text>
             <Text style={styles.muted}>
-              Lo que anotas en el bot aparece aquí. Para vincular otra cuenta, escribe /vincular al
-              bot.
+              Lo que anotas en el bot aparece aquí, y lo que cambies en Preferencias lo usa el bot
+              desde tu siguiente mensaje.
             </Text>
           </Card>
           <Preferences user={user.data} />
@@ -285,7 +290,8 @@ function AppLockCard() {
           </Text>
           <Text style={styles.muted}>
             Pide tu huella, tu rostro o el PIN del teléfono al abrirla y al volver después de 30
-            segundos.
+            segundos. Mientras esté activo, la app no permite capturas y se oculta en la vista de
+            apps recientes.
           </Text>
         </View>
         <Switch

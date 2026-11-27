@@ -1,4 +1,5 @@
 import * as LocalAuthentication from "expo-local-authentication";
+import * as ScreenCapture from "expo-screen-capture";
 import * as SecureStore from "expo-secure-store";
 import {
   createContext,
@@ -9,11 +10,14 @@ import {
   useRef,
   useState,
 } from "react";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
 
 import { readLockEnabled, shouldLockOnResume, writeLockEnabled } from "./app-lock";
 import { useAuth } from "./auth";
 import { supabase } from "./supabase";
+
+/** Llave propia, para no chocar con otro uso de expo-screen-capture. */
+const SCREEN_CAPTURE_KEY = "app-lock";
 
 type AppLock = {
   /** El teléfono tiene bloqueo de pantalla (huella, rostro, PIN o patrón); null mientras se revisa. */
@@ -76,6 +80,24 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const active = Boolean(available && enabled);
+  const protect = active && Boolean(session);
+
+  // Con el bloqueo activo, los saldos tampoco se ven fuera de la app: en Android, FLAG_SECURE deja
+  // en blanco la vista de apps recientes e impide capturas; en iOS, se difumina el selector de
+  // apps. Quien quiera capturas (para una demo) desactiva el bloqueo en Perfil.
+  useEffect(() => {
+    const done = protect
+      ? Promise.all([
+          ScreenCapture.preventScreenCaptureAsync(SCREEN_CAPTURE_KEY),
+          Platform.OS === "ios" ? ScreenCapture.enableAppSwitcherProtectionAsync(0.9) : null,
+        ])
+      : Promise.all([
+          ScreenCapture.allowScreenCaptureAsync(SCREEN_CAPTURE_KEY),
+          Platform.OS === "ios" ? ScreenCapture.disableAppSwitcherProtectionAsync() : null,
+        ]);
+    // Si el módulo falla, la app sigue funcionando: el bloqueo al abrir sigue protegiendo.
+    done.catch(() => undefined);
+  }, [protect]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {

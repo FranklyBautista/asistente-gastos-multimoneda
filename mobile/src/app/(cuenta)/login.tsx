@@ -32,7 +32,7 @@ export default function LoginScreen() {
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <Screen title="Inicia sesión" subtitle="Asistente de gastos">
+      <Screen title="Inicia sesión" subtitle="Asistente de gastos" profile={false}>
         <View style={{ gap: 14 }}>
           {callbackError === "confirmacion" ? (
             <Text style={styles.error} accessibilityRole="alert">

@@ -41,7 +41,7 @@ export default function SignUpScreen() {
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <Screen title="Crea tu cuenta" subtitle="Asistente de gastos">
+      <Screen title="Crea tu cuenta" subtitle="Asistente de gastos" profile={false}>
         <View style={{ gap: 14 }}>
           <Field
             label="Correo"
