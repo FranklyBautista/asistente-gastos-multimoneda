@@ -2,7 +2,7 @@ import { fireEvent, screen } from "@testing-library/react-native";
 
 import DebtsScreen from "@/app/(panel)/deudas";
 import { type DebtRow, getDebts, getLinkedUser } from "@/lib/queries";
-import { renderScreen } from "@/test-utils";
+import { fakeLinkedUser, renderScreen } from "@/test-utils";
 
 jest.mock("@/lib/supabase", () => ({ supabase: {} }));
 jest.mock("expo-router", () =>
@@ -17,7 +17,7 @@ jest.mock("@/lib/queries", () => ({
 const linkedUser = jest.mocked(getLinkedUser);
 const debts = jest.mocked(getDebts);
 
-const user = { displayName: "Frankly", timezone: "America/Caracas", vesRateSource: "bcv" };
+const user = fakeLinkedUser({ displayName: "Frankly" });
 const debt: DebtRow = {
   id: "1",
   direction: "i_owe",

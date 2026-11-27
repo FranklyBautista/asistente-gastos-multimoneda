@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react-native";
 
 import ExchangesScreen from "@/app/(panel)/cambios";
 import { type ExchangeRow, getExchanges, getLinkedUser } from "@/lib/queries";
-import { renderScreen } from "@/test-utils";
+import { fakeLinkedUser, renderScreen } from "@/test-utils";
 
 jest.mock("@/lib/supabase", () => ({ supabase: {} }));
 jest.mock("expo-router", () =>
@@ -14,7 +14,7 @@ jest.mock("@/lib/queries", () => ({
   getExchanges: jest.fn(),
 }));
 
-const user = { displayName: null, timezone: "America/Caracas", vesRateSource: "bcv" };
+const user = fakeLinkedUser();
 const sale: ExchangeRow = {
   id: "1",
   occurredAt: "2026-11-20T15:00:00Z",

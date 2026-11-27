@@ -11,7 +11,7 @@ import {
   getLinkedUser,
   getTransaction,
 } from "@/lib/queries";
-import { renderScreen } from "@/test-utils";
+import { fakeLinkedUser, renderScreen } from "@/test-utils";
 
 jest.mock("@/lib/supabase", () => ({ supabase: {} }));
 jest.mock("expo-router", () =>
@@ -41,9 +41,7 @@ const lunch: EditableTransaction = {
 beforeEach(() => {
   jest.clearAllMocks();
   jest.mocked(useLocalSearchParams).mockReturnValue({ id: "tx1" });
-  jest
-    .mocked(getLinkedUser)
-    .mockResolvedValue({ displayName: null, timezone: "America/Caracas", vesRateSource: "bcv" });
+  jest.mocked(getLinkedUser).mockResolvedValue(fakeLinkedUser());
   jest.mocked(getTransaction).mockResolvedValue(lunch);
   jest.mocked(getAccounts).mockResolvedValue([
     { id: "usd", name: "Efectivo USD", currency: "USD" },
