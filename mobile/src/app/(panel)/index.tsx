@@ -91,7 +91,7 @@ function Overview({
   const totalUsd = balances.reduce((sum, b) => sum + (b.balanceUsd ?? 0), 0);
   const unpriced = balances.filter((b) => b.balanceUsd === null && b.balance !== 0);
   const stale = [...new Set(balances.filter((b) => b.rateStale).map((b) => b.rateSource ?? ""))];
-  const groups = groupByCurrency(balances, totalUsd);
+  const groups = groupByCurrency(balances);
 
   return (
     <>
